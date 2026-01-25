@@ -720,29 +720,15 @@ export default function ApplyPage() {
                     initial={{ scale: 0, rotate: -180 }}
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
-                    className="relative w-24 h-24 mx-auto mb-10"
+                    className="relative w-20 h-20 mx-auto mb-8"
                   >
-                    {/* Outer ring */}
-                    <motion.div
-                      className="absolute inset-0 rounded-full border-2 border-[#ff6b6b]/30"
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1.2, opacity: 0 }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
-                    />
-                    <motion.div
-                      className="absolute inset-0 rounded-full border-2 border-[#ff6b6b]/20"
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1.4, opacity: 0 }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut", delay: 0.3 }}
-                    />
-                    {/* Main circle */}
-                    <div className="w-24 h-24 bg-gradient-to-br from-[#ff6b6b] to-[#ff8e8e] rounded-full flex items-center justify-center shadow-lg shadow-[#ff6b6b]/20">
+                    <div className="w-20 h-20 bg-[#ff6b6b] rounded-full flex items-center justify-center">
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.5 }}
                       >
-                        <Check className="w-12 h-12 text-white" strokeWidth={3} />
+                        <Check className="w-10 h-10 text-white" strokeWidth={3} />
                       </motion.div>
                     </div>
                   </motion.div>
@@ -754,7 +740,7 @@ export default function ApplyPage() {
                     transition={{ duration: 0.8, ease: smooth, delay: 0.4 }}
                     className="text-4xl md:text-5xl font-bold tracking-[-0.03em] text-center"
                   >
-                    You're in the running
+                    Application received
                   </motion.h1>
 
                   <motion.p
@@ -763,112 +749,63 @@ export default function ApplyPage() {
                     transition={{ duration: 0.8, ease: smooth, delay: 0.5 }}
                     className="mt-4 text-zinc-400 text-lg text-center max-w-md mx-auto"
                   >
-                    Your application has been received. We're excited to learn more about you.
+                    We'll review your application and reach out if you're approved.
                   </motion.p>
 
-                  {/* Info cards */}
+                  {/* Horizontal steps */}
                   <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, ease: smooth, delay: 0.6 }}
-                    className="mt-12 space-y-4 max-w-lg mx-auto"
+                    className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto"
                   >
-                    {/* What happens next card */}
-                    <motion.div
-                      whileHover={{ y: -2 }}
-                      className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-[#ff6b6b]/10 rounded-xl flex items-center justify-center shrink-0">
-                          <span className="text-[#ff6b6b] text-lg font-bold">1</span>
+                    {[
+                      { num: "1", title: "Review", desc: "5-7 business days" },
+                      { num: "2", title: "Decision", desc: "Email notification" },
+                      { num: "3", title: "Enrollment", desc: "Access & onboarding" },
+                    ].map((item, i) => (
+                      <motion.div
+                        key={item.num}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, ease: smooth, delay: 0.7 + i * 0.1 }}
+                        className="text-center p-5"
+                      >
+                        <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <span className="text-[#ff6b6b] text-sm font-bold">{item.num}</span>
                         </div>
-                        <div>
-                          <h3 className="text-white font-semibold">Application Review</h3>
-                          <p className="text-zinc-500 text-sm mt-1">
-                            Our team will carefully review your application within 5-7 business days.
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
-
-                    <motion.div
-                      whileHover={{ y: -2 }}
-                      className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-[#ff6b6b]/10 rounded-xl flex items-center justify-center shrink-0">
-                          <span className="text-[#ff6b6b] text-lg font-bold">2</span>
-                        </div>
-                        <div>
-                          <h3 className="text-white font-semibold">Decision Email</h3>
-                          <p className="text-zinc-500 text-sm mt-1">
-                            If your application is approved, we'll send you an email with next steps and enrollment details.
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
-
-                    <motion.div
-                      whileHover={{ y: -2 }}
-                      className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-[#ff6b6b]/10 rounded-xl flex items-center justify-center shrink-0">
-                          <span className="text-[#ff6b6b] text-lg font-bold">3</span>
-                        </div>
-                        <div>
-                          <h3 className="text-white font-semibold">Start Your Journey</h3>
-                          <p className="text-zinc-500 text-sm mt-1">
-                            Once enrolled, you'll get access to our platform, your cohort, and your first challenge.
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
+                        <h3 className="text-white font-medium text-sm">{item.title}</h3>
+                        <p className="text-zinc-500 text-xs mt-1">{item.desc}</p>
+                      </motion.div>
+                    ))}
                   </motion.div>
 
                   {/* Email confirmation note */}
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, ease: smooth, delay: 0.8 }}
-                    className="mt-8 text-center"
-                  >
-                    <p className="text-zinc-500 text-sm">
-                      A confirmation has been sent to <span className="text-zinc-300">{formData.email}</span>
-                    </p>
-                  </motion.div>
-
-                  {/* CTA Buttons */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, ease: smooth, delay: 0.9 }}
-                    className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
-                  >
-                    <Link href="/">
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="group flex items-center justify-center gap-2 bg-[#ff6b6b] text-white font-medium px-8 py-4 rounded-full"
-                      >
-                        Back to home
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
-                      </motion.button>
-                    </Link>
-                  </motion.div>
-
-                  {/* Social proof / encouragement */}
-                  <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ duration: 0.8, ease: smooth, delay: 1.1 }}
-                    className="mt-16 pt-8 border-t border-zinc-800/50"
+                    transition={{ duration: 0.8, ease: smooth, delay: 0.9 }}
+                    className="mt-8 text-center"
                   >
-                    <p className="text-zinc-600 text-sm text-center">
-                      While you wait, follow us on{" "}
-                      <a href="#" className="text-[#ff6b6b] hover:underline">Twitter</a>
-                      {" "}for updates and insights.
+                    <p className="text-zinc-600 text-sm">
+                      Confirmation sent to <span className="text-zinc-400">{formData.email}</span>
                     </p>
+                  </motion.div>
+
+                  {/* CTA Button */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, ease: smooth, delay: 1 }}
+                    className="mt-10 flex justify-center"
+                  >
+                    <Link
+                      href="/"
+                      className="group inline-flex items-center justify-center gap-2 bg-[#ff6b6b] text-white font-medium px-8 py-4 rounded-full hover:bg-[#ff5a5a] transition-colors duration-300"
+                    >
+                      Back to home
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+                    </Link>
                   </motion.div>
                 </motion.div>
               ) : (
