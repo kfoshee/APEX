@@ -118,8 +118,9 @@ function Hero() {
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <motion.a href="#" className="flex items-center gap-2 text-white">
+            {/* Swap the triangle icon for your APEX logo */}
             <Image
-              src="/APEX-Final-White.svg?v=100"
+              src="/apex-logo.svg?v=100"
               alt="APEX"
               width={28}
               height={28}
@@ -128,7 +129,9 @@ function Hero() {
               unoptimized
             />
             <span className="text-sm font-medium tracking-wide">APEX</span>
-          </motion.a>          <div className="flex items-center gap-8">
+          </motion.a>
+
+          <div className="flex items-center gap-8">
             <motion.a
               href="#what"
               className="text-zinc-500 text-sm hover:text-white transition-colors duration-300 hidden md:block"
@@ -184,9 +187,7 @@ function Hero() {
           </motion.div>
 
           {/* Giant headline */}
-          <motion.h1
-            className="text-[clamp(3rem,10vw,8rem)] font-bold text-white leading-[0.95] tracking-[-0.04em] max-w-5xl"
-          >
+          <motion.h1 className="text-[clamp(3rem,10vw,8rem)] font-bold text-white leading-[0.95] tracking-[-0.04em] max-w-5xl">
             <motion.span
               initial={{ opacity: 0, y: 60 }}
               animate={{ opacity: 1, y: 0 }}
@@ -251,7 +252,6 @@ function Hero() {
       />
 
       {/* Scroll indicator */}
-
     </section>
   );
 }
