@@ -8,8 +8,7 @@ import Image from "next/image";
 const BRAND = "APEX";
 const APPLY_URL = "#pricing";
 const PRICE = "$500/mo";
-const smooth = [0.16, 1, 0.3, 1];
-
+const smooth: [number, number, number, number] = [0.16, 1, 0.3, 1];
 // Reusable animation variants
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
