@@ -771,11 +771,11 @@ export default function ApplyPage() {
                         transition={{ duration: 0.5, ease: smooth, delay: 0.7 + i * 0.1 }}
                         className="text-center p-5"
                       >
-                        <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <span className="text-[#ff6b6b] text-sm font-bold">{item.num}</span>
+                        <div className="w-14 h-14 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <span className="text-[#ff6b6b] text-xl font-bold">{item.num}</span>
                         </div>
-                        <h3 className="text-white font-medium text-sm">{item.title}</h3>
-                        <p className="text-zinc-500 text-xs mt-1">{item.desc}</p>
+                        <h3 className="text-white font-semibold text-lg">{item.title}</h3>
+                        <p className="text-zinc-500 text-sm mt-1">{item.desc}</p>
                       </motion.div>
                     ))}
                   </motion.div>
