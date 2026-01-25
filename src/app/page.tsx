@@ -6,7 +6,7 @@ import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 
 const BRAND = "APEX";
-const APPLY_URL = "#pricing";
+const APPLY_URL = "/apply";
 const PRICE = "$500/mo";
 const smooth: [number, number, number, number] = [0.16, 1, 0.3, 1];
 // Reusable animation variants
