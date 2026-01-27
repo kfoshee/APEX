@@ -11,7 +11,6 @@ const APPLY_URL = "/apply";
 const PRICE = "$500/mo";
 const smooth: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-// Custom hook for responsive breakpoints
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
   useEffect(() => {
@@ -24,53 +23,27 @@ function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-// Hook to save scroll position before navigating
 function useScrollSave() {
   const router = useRouter();
-  
   const navigateWithScroll = (url: string) => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('scrollPosition', window.scrollY.toString());
-    }
+    if (typeof window !== 'undefined') sessionStorage.setItem('scrollPosition', window.scrollY.toString());
     router.push(url);
   };
-
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedPosition = sessionStorage.getItem('scrollPosition');
-      if (savedPosition) {
-        window.scrollTo(0, parseInt(savedPosition));
-        sessionStorage.removeItem('scrollPosition');
-      }
+      if (savedPosition) { window.scrollTo(0, parseInt(savedPosition)); sessionStorage.removeItem('scrollPosition'); }
     }
   }, []);
-
   return navigateWithScroll;
 }
 
-const fadeInUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: (delay: number = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 1, ease: smooth, delay },
-  }),
-};
-
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: (delay: number = 0) => ({
-    opacity: 1,
-    transition: { duration: 0.8, ease: smooth, delay },
-  }),
-};
+const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: (delay: number = 0) => ({ opacity: 1, y: 0, transition: { duration: 1, ease: smooth, delay } }) };
+const fadeIn = { hidden: { opacity: 0 }, visible: (delay: number = 0) => ({ opacity: 1, transition: { duration: 0.8, ease: smooth, delay } }) };
 
 function Hero() {
   const ref = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  });
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const y = useTransform(scrollYProgress, [0, 1], [0, 100]);
   const opacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -80,159 +53,34 @@ function Hero() {
 
   return (
     <section ref={ref} style={{ position: 'relative', minHeight: '100vh', background: '#0a0a0a', overflow: 'hidden' }}>
-      <motion.div
-        style={{
-          position: 'absolute',
-          top: '-30%',
-          right: '-20%',
-          width: isMobile ? 400 : 900,
-          height: isMobile ? 400 : 900,
-          borderRadius: '50%',
-          opacity: 0.5,
-          background: 'radial-gradient(circle, rgba(255,107,107,0.2) 0%, transparent 50%)',
-        }}
-        animate={{ scale: [1, 1.15, 1], x: [0, 20, 0], y: [0, -20, 0] }}
-        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        style={{
-          position: 'absolute',
-          bottom: '-20%',
-          left: '-10%',
-          width: isMobile ? 300 : 600,
-          height: isMobile ? 300 : 600,
-          borderRadius: '50%',
-          opacity: 0.3,
-          background: 'radial-gradient(circle, rgba(255,150,100,0.15) 0%, transparent 50%)',
-        }}
-        animate={{ scale: [1, 1.1, 1], x: [0, 15, 0], y: [0, 15, 0] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 3 }}
-      />
-
-      {!isMobile && [...Array(5)].map((_, i) => (
-        <motion.div
-          key={i}
-          style={{
-            position: 'absolute',
-            width: 4,
-            height: 4,
-            background: '#ff6b6b',
-            borderRadius: '50%',
-            left: `${15 + i * 18}%`,
-            top: `${25 + (i % 3) * 25}%`,
-          }}
-          animate={{ y: [0, -40, 0], opacity: [0.15, 0.4, 0.15] }}
-          transition={{ duration: 6 + i * 2, repeat: Infinity, ease: "easeInOut", delay: i * 0.8 }}
-        />
-      ))}
-
-      <motion.nav
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1, ease: smooth, delay: 0.2 }}
-        style={{ position: 'relative', zIndex: 20, padding: isMobile ? '16px' : '24px' }}
-      >
+      <motion.div style={{ position: 'absolute', top: '-30%', right: '-20%', width: isMobile ? 400 : 900, height: isMobile ? 400 : 900, borderRadius: '50%', opacity: 0.5, background: 'radial-gradient(circle, rgba(255,107,107,0.2) 0%, transparent 50%)' }} animate={{ scale: [1, 1.15, 1], x: [0, 20, 0], y: [0, -20, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} />
+      <motion.div style={{ position: 'absolute', bottom: '-20%', left: '-10%', width: isMobile ? 300 : 600, height: isMobile ? 300 : 600, borderRadius: '50%', opacity: 0.3, background: 'radial-gradient(circle, rgba(255,150,100,0.15) 0%, transparent 50%)' }} animate={{ scale: [1, 1.1, 1], x: [0, 15, 0], y: [0, 15, 0] }} transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 3 }} />
+      {!isMobile && [...Array(5)].map((_, i) => (<motion.div key={i} style={{ position: 'absolute', width: 4, height: 4, background: '#ff6b6b', borderRadius: '50%', left: `${15 + i * 18}%`, top: `${25 + (i % 3) * 25}%` }} animate={{ y: [0, -40, 0], opacity: [0.15, 0.4, 0.15] }} transition={{ duration: 6 + i * 2, repeat: Infinity, ease: "easeInOut", delay: i * 0.8 }} />))}
+      <motion.nav initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, ease: smooth, delay: 0.2 }} style={{ position: 'relative', zIndex: 20, padding: isMobile ? '16px' : '24px' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <motion.a href="#" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'white', textDecoration: 'none' }} aria-label="APEX Home">
-            <Image src="/APEX-Final-White.svg?v=100" alt="APEX Logo" width={28} height={28} style={{ height: 28, width: 28 }} priority unoptimized />
-            <span style={{ fontSize: 14, fontWeight: 500, letterSpacing: '0.025em' }}>APEX</span>
-          </motion.a>
-          
-          {isMobile ? (
-            <>
-              <button 
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
-                style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: 8 }}
-                aria-label="Toggle menu"
-              >
-                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
-              <AnimatePresence>
-                {mobileMenuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      background: '#0a0a0a',
-                      padding: '24px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 20,
-                      borderBottom: '1px solid #27272a'
-                    }}
-                  >
-                    <a href="#method" onClick={() => setMobileMenuOpen(false)} style={{ color: '#a1a1aa', fontSize: 16, textDecoration: 'none' }}>How it works</a>
-                    <a href="#what" onClick={() => setMobileMenuOpen(false)} style={{ color: '#a1a1aa', fontSize: 16, textDecoration: 'none' }}>What is APEX</a>
-                    <a href="#pricing" onClick={() => setMobileMenuOpen(false)} style={{ color: '#a1a1aa', fontSize: 16, textDecoration: 'none' }}>Pricing</a>
-                    <button onClick={() => navigateWithScroll(APPLY_URL)} style={{ color: '#ff6b6b', fontSize: 16, fontWeight: 500, background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', padding: 0 }}>Apply</button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: isTablet ? 20 : 32 }}>
-              <motion.a href="#method" style={{ color: '#71717a', fontSize: 14, textDecoration: 'none' }} whileHover={{ y: -2, color: '#fff' }}>How it works</motion.a>
-              <motion.a href="#what" style={{ color: '#71717a', fontSize: 14, textDecoration: 'none' }} whileHover={{ y: -2, color: '#fff' }}>What is APEX</motion.a>
-              <motion.a href="#pricing" style={{ color: '#71717a', fontSize: 14, textDecoration: 'none' }} whileHover={{ y: -2, color: '#fff' }}>Pricing</motion.a>
-              <motion.button onClick={() => navigateWithScroll(APPLY_URL)} style={{ color: '#ff6b6b', fontSize: 14, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer' }} whileHover={{ x: 3 }}>Apply</motion.button>
-            </div>
-          )}
+          <motion.a href="#" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'white', textDecoration: 'none' }} aria-label="APEX Home"><Image src="/APEX-Final-White.svg?v=100" alt="APEX Logo" width={28} height={28} style={{ height: 28, width: 28 }} priority unoptimized /><span style={{ fontSize: 14, fontWeight: 500, letterSpacing: '0.025em' }}>APEX</span></motion.a>
+          {isMobile ? (<><button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: 8 }} aria-label="Toggle menu">{mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}</button><AnimatePresence>{mobileMenuOpen && (<motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#0a0a0a', padding: '24px', display: 'flex', flexDirection: 'column', gap: 20, borderBottom: '1px solid #27272a' }}><a href="#method" onClick={() => setMobileMenuOpen(false)} style={{ color: '#a1a1aa', fontSize: 16, textDecoration: 'none' }}>How it works</a><a href="#what" onClick={() => setMobileMenuOpen(false)} style={{ color: '#a1a1aa', fontSize: 16, textDecoration: 'none' }}>What is APEX</a><a href="#pricing" onClick={() => setMobileMenuOpen(false)} style={{ color: '#a1a1aa', fontSize: 16, textDecoration: 'none' }}>Pricing</a><button onClick={() => navigateWithScroll(APPLY_URL)} style={{ color: '#ff6b6b', fontSize: 16, fontWeight: 500, background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', padding: 0 }}>Apply</button></motion.div>)}</AnimatePresence></>) : (<div style={{ display: 'flex', alignItems: 'center', gap: isTablet ? 20 : 32 }}><motion.a href="#method" style={{ color: '#71717a', fontSize: 14, textDecoration: 'none' }} whileHover={{ y: -2, color: '#fff' }}>How it works</motion.a><motion.a href="#what" style={{ color: '#71717a', fontSize: 14, textDecoration: 'none' }} whileHover={{ y: -2, color: '#fff' }}>What is APEX</motion.a><motion.a href="#pricing" style={{ color: '#71717a', fontSize: 14, textDecoration: 'none' }} whileHover={{ y: -2, color: '#fff' }}>Pricing</motion.a><motion.button onClick={() => navigateWithScroll(APPLY_URL)} style={{ color: '#ff6b6b', fontSize: 14, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer' }} whileHover={{ x: 3 }}>Apply</motion.button></div>)}
         </div>
       </motion.nav>
-
       <motion.div style={{ y: isMobile ? 0 : y, opacity, position: 'relative', zIndex: 10, padding: isMobile ? '10vh 20px 80px' : '15vh 24px 128px' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 1, ease: smooth, delay: 0.3 }} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMobile ? 24 : 32 }}>
-            <motion.span style={{ width: 8, height: 8, background: '#ff6b6b', borderRadius: '50%' }} animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} />
-            <span style={{ color: '#71717a', fontSize: isMobile ? 13 : 14 }}>Cohort now open</span>
-          </motion.div>
-
-          <motion.h1 style={{ fontSize: isMobile ? 'clamp(2.5rem, 12vw, 4rem)' : 'clamp(3rem, 10vw, 8rem)', fontWeight: 700, color: 'white', lineHeight: 0.95, letterSpacing: '-0.04em', maxWidth: 1000 }}>
-            <motion.span initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.2, ease: smooth, delay: 0.4 }} style={{ display: 'block' }}>Get hired for</motion.span>
-            <motion.span initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.2, ease: smooth, delay: 0.55 }} style={{ display: 'block', color: '#ff6b6b' }}>what you can do</motion.span>
-          </motion.h1>
-
-          <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, ease: smooth, delay: 0.8 }} style={{ marginTop: isMobile ? 32 : 48, marginLeft: isMobile ? 0 : 'auto', maxWidth: isMobile ? '100%' : 420 }}>
-            <p style={{ color: '#a1a1aa', fontSize: isMobile ? 16 : 18, lineHeight: 1.7 }}>Skip the traditional degree. Build a portfolio employers can actually evaluate.</p>
-            <div style={{ marginTop: isMobile ? 24 : 32, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <motion.button onClick={() => navigateWithScroll(APPLY_URL)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#ff6b6b', color: 'white', fontSize: 14, fontWeight: 500, padding: isMobile ? '14px 28px' : '12px 24px', borderRadius: 100, border: 'none', cursor: 'pointer' }} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-                Start building
-                <ArrowRight style={{ width: 16, height: 16 }} />
-              </motion.button>
-              <span style={{ color: '#52525b', fontSize: 14 }}>{PRICE}</span>
-            </div>
-          </motion.div>
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 1, ease: smooth, delay: 0.3 }} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMobile ? 24 : 32 }}><motion.span style={{ width: 8, height: 8, background: '#ff6b6b', borderRadius: '50%' }} animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} /><span style={{ color: '#71717a', fontSize: isMobile ? 13 : 14 }}>Cohort now open</span></motion.div>
+          <motion.h1 style={{ fontSize: isMobile ? 'clamp(2.5rem, 12vw, 4rem)' : 'clamp(3rem, 10vw, 8rem)', fontWeight: 700, color: 'white', lineHeight: 0.95, letterSpacing: '-0.04em', maxWidth: 1000 }}><motion.span initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.2, ease: smooth, delay: 0.4 }} style={{ display: 'block' }}>Get hired for</motion.span><motion.span initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.2, ease: smooth, delay: 0.55 }} style={{ display: 'block', color: '#ff6b6b' }}>what you can do</motion.span></motion.h1>
+          <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, ease: smooth, delay: 0.8 }} style={{ marginTop: isMobile ? 32 : 48, marginLeft: isMobile ? 0 : 'auto', maxWidth: isMobile ? '100%' : 420 }}><p style={{ color: '#a1a1aa', fontSize: isMobile ? 16 : 18, lineHeight: 1.7 }}>Skip the traditional degree. Build a portfolio employers can actually evaluate.</p><div style={{ marginTop: isMobile ? 24 : 32, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}><motion.button onClick={() => navigateWithScroll(APPLY_URL)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#ff6b6b', color: 'white', fontSize: 14, fontWeight: 500, padding: isMobile ? '14px 28px' : '12px 24px', borderRadius: 100, border: 'none', cursor: 'pointer' }} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>Start building<ArrowRight style={{ width: 16, height: 16 }} /></motion.button><span style={{ color: '#52525b', fontSize: 14 }}>{PRICE}</span></div></motion.div>
         </div>
       </motion.div>
-
       <motion.div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, background: '#27272a' }} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 1.5, ease: smooth, delay: 0.8 }} />
     </section>
   );
 }
 
-function Step({ number, title, description, mockup, reverse = false }: { number: string; title: string; description: string; mockup: React.ReactNode; reverse?: boolean; }) {
+function Step({ number, title, description, mockup, reverse = false }: { number: string; title: string; description: string; mockup: React.ReactNode; reverse?: boolean }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const isMobile = useMediaQuery("(max-width: 768px)");
-
   return (
-    <div ref={ref} style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      gap: isMobile ? 32 : 80, 
-      marginBottom: isMobile ? 80 : 120, 
-      flexDirection: isMobile ? 'column' : (reverse ? 'row-reverse' : 'row') 
-    }}>
-      <motion.div initial={{ opacity: 0, x: isMobile ? 0 : (reverse ? 60 : -60), y: 30 }} animate={isInView ? { opacity: 1, x: 0, y: 0 } : {}} transition={{ duration: 0.8, ease: smooth }} style={{ flex: 1, maxWidth: isMobile ? '100%' : 420, textAlign: isMobile ? 'center' : 'left' }}>
-        <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={isInView ? { opacity: 1, scale: 1 } : {}} transition={{ duration: 0.5, ease: smooth, delay: 0.1 }} style={{ color: '#ff6b6b', fontSize: 15, fontWeight: 700, marginBottom: 10 }}>{number}</motion.div>
-        <motion.h3 initial={{ opacity: 0, y: 20 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.6, ease: smooth, delay: 0.15 }} style={{ fontSize: isMobile ? 28 : 36, fontWeight: 800, color: '#0a0a0a', marginBottom: 16, letterSpacing: '-0.02em' }}>{title}</motion.h3>
-        <motion.p initial={{ opacity: 0, y: 20 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.6, ease: smooth, delay: 0.25 }} style={{ fontSize: isMobile ? 15 : 17, color: '#71717a', lineHeight: 1.7, margin: 0 }}>{description}</motion.p>
-      </motion.div>
+    <div ref={ref} style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 32 : 80, marginBottom: isMobile ? 80 : 120, flexDirection: isMobile ? 'column' : (reverse ? 'row-reverse' : 'row') }}>
+      <motion.div initial={{ opacity: 0, x: isMobile ? 0 : (reverse ? 60 : -60), y: 30 }} animate={isInView ? { opacity: 1, x: 0, y: 0 } : {}} transition={{ duration: 0.8, ease: smooth }} style={{ flex: 1, maxWidth: isMobile ? '100%' : 420, textAlign: isMobile ? 'center' : 'left' }}><motion.div initial={{ opacity: 0, scale: 0.5 }} animate={isInView ? { opacity: 1, scale: 1 } : {}} transition={{ duration: 0.5, ease: smooth, delay: 0.1 }} style={{ color: '#ff6b6b', fontSize: 15, fontWeight: 700, marginBottom: 10 }}>{number}</motion.div><motion.h3 initial={{ opacity: 0, y: 20 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.6, ease: smooth, delay: 0.15 }} style={{ fontSize: isMobile ? 28 : 36, fontWeight: 800, color: '#0a0a0a', marginBottom: 16, letterSpacing: '-0.02em' }}>{title}</motion.h3><motion.p initial={{ opacity: 0, y: 20 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.6, ease: smooth, delay: 0.25 }} style={{ fontSize: isMobile ? 15 : 17, color: '#71717a', lineHeight: 1.7, margin: 0 }}>{description}</motion.p></motion.div>
       <motion.div initial={{ opacity: 0, x: isMobile ? 0 : (reverse ? -60 : 60), y: 30, scale: 0.9 }} animate={isInView ? { opacity: 1, x: 0, y: 0, scale: 1 } : {}} transition={{ duration: 0.8, ease: smooth, delay: 0.2 }} style={{ flex: 1, display: 'flex', justifyContent: 'center', width: '100%' }}>{mockup}</motion.div>
     </div>
   );
@@ -255,10 +103,7 @@ function Journey() {
   return (
     <section id="method" ref={ref} style={{ background: '#fafafa' }}>
       <div style={{ padding: isMobile ? '60px 20px' : '80px 24px', maxWidth: 1200, margin: '0 auto' }}>
-        <motion.div ref={headerRef} initial={{ opacity: 0, y: 40 }} animate={headerInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.8, ease: smooth }} style={{ textAlign: 'center', marginBottom: isMobile ? 48 : 80 }}>
-          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={headerInView ? { opacity: 1, scale: 1 } : {}} transition={{ duration: 0.5, delay: 0.1 }} style={{ color: '#ff6b6b', fontSize: 14, fontWeight: 600, marginBottom: 12 }}>The APEX Method</motion.div>
-          <motion.h2 initial={{ opacity: 0, y: 30 }} animate={headerInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.7, delay: 0.2 }} style={{ fontSize: isMobile ? 32 : 40, fontWeight: 800, color: '#0a0a0a', letterSpacing: '-0.03em', margin: 0 }}>How it works</motion.h2>
-        </motion.div>
+        <motion.div ref={headerRef} initial={{ opacity: 0, y: 40 }} animate={headerInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.8, ease: smooth }} style={{ textAlign: 'center', marginBottom: isMobile ? 48 : 80 }}><motion.div initial={{ opacity: 0, scale: 0.8 }} animate={headerInView ? { opacity: 1, scale: 1 } : {}} transition={{ duration: 0.5, delay: 0.1 }} style={{ color: '#ff6b6b', fontSize: 14, fontWeight: 600, marginBottom: 12 }}>The APEX Method</motion.div><motion.h2 initial={{ opacity: 0, y: 30 }} animate={headerInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.7, delay: 0.2 }} style={{ fontSize: isMobile ? 32 : 40, fontWeight: 800, color: '#0a0a0a', letterSpacing: '-0.03em', margin: 0 }}>How it works</motion.h2></motion.div>
 
         <Step number="01" title="Pick Your Track" description="Choose from Data Analytics, Product, or Engineering tracks" mockup={<MockupFrame><div style={{ padding: isMobile ? 20 : 28 }}><div style={{ marginBottom: 24 }}><div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: '#0a0a0a', marginBottom: 6 }}>Welcome back, Alex</div><div style={{ fontSize: 14, color: '#71717a' }}>Continue building your portfolio</div></div><div style={{ background: 'linear-gradient(135deg, rgba(255,107,107,0.08) 0%, rgba(255,107,107,0.02) 100%)', border: '2px solid #ff6b6b', borderRadius: 16, padding: isMobile ? 16 : 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}><div><div style={{ display: 'inline-block', background: '#ff6b6b', color: 'white', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5, padding: '5px 10px', borderRadius: 6, marginBottom: 12 }}>In Progress</div><div style={{ fontSize: isMobile ? 16 : 20, fontWeight: 800, color: '#0a0a0a', marginBottom: 4 }}>Data Analytics Track</div><div style={{ fontSize: isMobile ? 12 : 14, color: '#71717a' }}>SQL, Python, and visualization</div></div><div style={{ width: 44, height: 44, background: '#0a0a0a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><ChevronRight style={{ width: 18, height: 18, color: 'white' }} /></div></div></div></MockupFrame>} />
 
@@ -266,13 +111,13 @@ function Journey() {
 
         <Step number="03" title="AI Tests You" description="The AI tutor checks if you understood the lesson" mockup={<MockupFrame><div style={{ padding: isMobile ? 14 : 18, display: 'flex', flexDirection: 'column', minHeight: isMobile ? 280 : 340 }}><div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, paddingBottom: 16, borderBottom: '1px solid #f4f4f5' }}><div style={{ width: 40, height: 40, background: 'linear-gradient(135deg, #ff6b6b, #ff8585)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 13, fontWeight: 800 }}>AI</div><div><div style={{ fontSize: 15, fontWeight: 800, color: '#0a0a0a' }}>AI Tutor</div><div style={{ fontSize: 12, color: '#10b981', display: 'flex', alignItems: 'center', gap: 5 }}><div style={{ width: 5, height: 5, background: '#10b981', borderRadius: '50%' }} />Online</div></div></div><div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}><div style={{ background: '#f4f4f5', borderRadius: '6px 16px 16px 16px', padding: isMobile ? 12 : 16, fontSize: isMobile ? 13 : 14, color: '#52525b', lineHeight: 1.6 }}>Quick test: <strong style={{ color: '#0a0a0a' }}>18K subs, 8% churn, $200K budget.</strong> Reduce churn to 5% or acquire 2,400 new?</div><div style={{ background: '#0a0a0a', color: 'white', borderRadius: '16px 16px 6px 16px', padding: isMobile ? 12 : 16, fontSize: isMobile ? 13 : 14, marginLeft: 'auto', maxWidth: '75%' }}>Retention - 2.7x better ROI</div><div style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', borderRadius: '6px 16px 16px 16px', padding: isMobile ? 12 : 16, fontSize: isMobile ? 13 : 14, display: 'flex', alignItems: 'center', gap: 10 }}><Check style={{ width: 18, height: 18 }} />Correct! Retention = 2.7x better ROI.</div></div></div></MockupFrame>} />
 
-        <Step number="04" title="Solve Real Challenges" description="Work on actual problems from companies like DoorDash" reverse mockup={<MockupFrame><div style={{ display: 'flex', flexDirection: 'column' }}><div style={{ background: '#0a0a0a', padding: isMobile ? 16 : 20 }}><div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}><div style={{ width: 26, height: 26, background: '#ff3008', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M23.071 8.409a6.09 6.09 0 0 0-5.396-3.228H.584A.589.589 0 0 0 .17 6.184L3.894 9.93a1.752 1.752 0 0 0 1.242.516h12.049a1.554 1.554 0 1 1 0 3.108H8.235a.59.59 0 0 0-.415 1.003l3.725 3.747a1.75 1.75 0 0 0 1.242.516h4.398a6.098 6.098 0 0 0 5.886-7.411z"/></svg></div><span style={{ color: '#71717a', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5 }}>DoorDash Growth Team</span></div><div style={{ color: 'white', fontSize: isMobile ? 16 : 20, fontWeight: 800 }}>Northeast Order Decline Analysis</div></div><div style={{ background: '#fafafa', padding: isMobile ? 12 : 16 }}><div style={{ display: 'flex', gap: isMobile ? 6 : 10, marginBottom: 14 }}>{[{ value: '-12%', label: 'Order Decline' }, { value: '$1.2B', label: 'Revenue at Risk' }, { value: '127K', label: 'Users Churned' }].map((m) => (<div key={m.label} style={{ flex: 1, background: 'white', borderRadius: 10, padding: isMobile ? 8 : 12, textAlign: 'center' }}><div style={{ fontSize: isMobile ? 16 : 20, fontWeight: 900, color: '#ff3008' }}>{m.value}</div><div style={{ fontSize: isMobile ? 9 : 11, color: '#71717a', marginTop: 4 }}>{m.label}</div></div>))}</div><div style={{ background: 'white', borderRadius: 10, padding: isMobile ? 10 : 14 }}><div style={{ fontSize: 10, fontWeight: 700, color: '#71717a', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Q4 by Region</div><div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: isMobile ? 50 : 70 }}>{[{ label: 'West', h: 48, green: true, val: '+7%' }, { label: 'Mid', h: 36, green: true, val: '+5%' }, { label: 'South', h: 58, green: true, val: '+9%' }, { label: 'NE', h: 28, green: false, val: '-12%' }].map((bar) => (<div key={bar.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isMobile ? 3 : 5 }}><div style={{ fontSize: isMobile ? 8 : 10, fontWeight: 700, color: bar.green ? '#10b981' : '#dc2626' }}>{bar.val}</div><div style={{ width: isMobile ? 24 : 32, height: isMobile ? bar.h * 0.7 : bar.h, borderRadius: 5, background: bar.green ? 'linear-gradient(180deg, #34d399, #10b981)' : 'linear-gradient(180deg, #ff6b6b, #dc2626)' }} /><div style={{ fontSize: isMobile ? 8 : 10, color: '#a1a1aa', fontWeight: 600 }}>{bar.label}</div></div>))}</div></div></div></div></MockupFrame>} />
+        <Step number="04" title="Solve Real Challenges" description="Work on actual business problems from growing companies" reverse mockup={<MockupFrame><div style={{ display: 'flex', flexDirection: 'column' }}><div style={{ background: '#0a0a0a', padding: isMobile ? 16 : 20 }}><div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}><div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700, boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>R</div><span style={{ color: '#71717a', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5 }}>Rushly Growth Team</span></div><div style={{ color: 'white', fontSize: isMobile ? 16 : 20, fontWeight: 800 }}>Northeast Order Decline Analysis</div></div><div style={{ background: '#fafafa', padding: isMobile ? 12 : 16 }}><div style={{ display: 'flex', gap: isMobile ? 6 : 10, marginBottom: 14 }}>{[{ value: '-12%', label: 'Order Decline', color: '#ef4444' }, { value: '$1.2B', label: 'Revenue at Risk', color: '#10b981' }, { value: '127K', label: 'Users Churned', color: '#0a0a0a' }].map((m) => (<div key={m.label} style={{ flex: 1, background: 'white', borderRadius: 10, padding: isMobile ? 8 : 12, textAlign: 'center' }}><div style={{ fontSize: isMobile ? 16 : 20, fontWeight: 900, color: m.color }}>{m.value}</div><div style={{ fontSize: isMobile ? 9 : 11, color: '#71717a', marginTop: 4 }}>{m.label}</div></div>))}</div><div style={{ background: 'white', borderRadius: 10, padding: isMobile ? 10 : 14 }}><div style={{ fontSize: 10, fontWeight: 700, color: '#71717a', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 20 }}>Q4 by Region</div><div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: isMobile ? 100 : 120 }}>{[{ label: 'West', h: 65, green: true, val: '+7%' }, { label: 'Mid', h: 50, green: true, val: '+5%' }, { label: 'South', h: 80, green: true, val: '+9%' }, { label: 'NE', h: 35, green: false, val: '-12%' }].map((bar) => (<div key={bar.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}><div style={{ fontSize: isMobile ? 11 : 13, fontWeight: 700, color: bar.green ? '#10b981' : '#ef4444', marginBottom: 6 }}>{bar.val}</div><div style={{ width: isMobile ? 40 : 50, height: isMobile ? bar.h * 0.75 : bar.h, borderRadius: 10, background: bar.green ? '#10b981' : '#ef4444' }} /><div style={{ fontSize: isMobile ? 11 : 13, color: '#71717a', fontWeight: 500, marginTop: 10 }}>{bar.label}</div></div>))}</div></div></div></div></MockupFrame>} />
 
         <Step number="05" title="Get Ranked" description="AI compares your work against thousands of other students" mockup={<MockupFrame dark><div style={{ padding: isMobile ? 24 : 36, minHeight: isMobile ? 260 : 320, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: isMobile ? 56 : 72, height: isMobile ? 56 : 72, background: 'linear-gradient(135deg, #ff6b6b, #ff8585)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}><Check style={{ width: isMobile ? 28 : 36, height: isMobile ? 28 : 36, color: 'white' }} /></div><div style={{ background: 'rgba(255,107,107,0.12)', color: '#ff6b6b', fontSize: isMobile ? 10 : 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 3, padding: '8px 20px', borderRadius: 100, marginBottom: 18 }}>Challenge Complete</div><div style={{ color: 'white', fontSize: isMobile ? 36 : 48, fontWeight: 900, marginBottom: 8, letterSpacing: '-0.03em' }}>Top 10%</div><div style={{ color: '#71717a', fontSize: isMobile ? 13 : 15 }}>Beat 90% of all student submissions</div></div></MockupFrame>} />
 
-        <Step number="06" title="Build Your Portfolio" description="All your ranked work in one place for employers to see" reverse mockup={<MockupFrame><div style={{ display: 'flex', flexDirection: 'column' }}><div style={{ padding: isMobile ? 16 : 20, borderBottom: '1px solid #f4f4f5' }}><div style={{ fontSize: isMobile ? 16 : 20, fontWeight: 800, color: '#0a0a0a' }}>Your Portfolio</div><div style={{ fontSize: 13, color: '#71717a', marginTop: 4 }}>Employers see your ranked work</div></div><div style={{ padding: isMobile ? 10 : 14, display: 'flex', flexDirection: 'column', gap: 8 }}>{[{ logo: '#ff3008', company: 'DoorDash', type: 'Growth Analytics', badge: 'Top 10%', featured: true, isDoorDash: true }, { logo: '#1DB954', letter: 'S', company: 'Spotify', type: 'Product', badge: 'Top 15%' }, { logo: '#635BFF', letter: 'S', company: 'Stripe', type: 'Analytics', badge: 'Top 8%' }, { logo: '#FF5A5F', letter: 'A', company: 'Airbnb', type: 'Pricing', badge: 'Top 12%' }].map((item) => (<div key={item.company} style={{ display: 'flex', alignItems: 'center', gap: 12, background: item.featured ? 'linear-gradient(135deg, rgba(255,107,107,0.06) 0%, rgba(255,107,107,0.02) 100%)' : '#fafafa', borderRadius: 12, padding: isMobile ? 10 : 14, border: item.featured ? '1.5px solid rgba(255,107,107,0.3)' : '1px solid transparent' }}><div style={{ width: isMobile ? 32 : 40, height: isMobile ? 32 : 40, borderRadius: 10, background: item.logo, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 800, flexShrink: 0 }}>{item.isDoorDash ? (<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M23.071 8.409a6.09 6.09 0 0 0-5.396-3.228H.584A.589.589 0 0 0 .17 6.184L3.894 9.93a1.752 1.752 0 0 0 1.242.516h12.049a1.554 1.554 0 1 1 0 3.108H8.235a.59.59 0 0 0-.415 1.003l3.725 3.747a1.75 1.75 0 0 0 1.242.516h4.398a6.098 6.098 0 0 0 5.886-7.411z"/></svg>) : item.letter}</div><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 700, color: '#0a0a0a' }}>{item.company}</div><div style={{ fontSize: 12, color: '#71717a' }}>{item.type}</div></div><div style={{ fontSize: isMobile ? 10 : 11, fontWeight: 700, padding: '5px 10px', borderRadius: 6, background: 'rgba(255,107,107,0.1)', color: '#ff6b6b', flexShrink: 0 }}>{item.badge}</div></div>))}</div></div></MockupFrame>} />
+        <Step number="06" title="Build Your Portfolio" description="All your ranked work in one place for employers to see" reverse mockup={<MockupFrame><div style={{ display: 'flex', flexDirection: 'column' }}><div style={{ padding: isMobile ? 16 : 20, borderBottom: '1px solid #f4f4f5' }}><div style={{ fontSize: isMobile ? 16 : 20, fontWeight: 800, color: '#0a0a0a' }}>Your Portfolio</div><div style={{ fontSize: 13, color: '#71717a', marginTop: 4 }}>Employers see your ranked work</div></div><div style={{ padding: isMobile ? 10 : 14, display: 'flex', flexDirection: 'column', gap: 8 }}>{[{ logo: 'linear-gradient(135deg, #10b981, #059669)', letter: 'R', company: 'Rushly', type: 'Growth Analytics', badge: 'Top 10%', featured: true }, { logo: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', letter: 'M', company: 'Melodix', type: 'Product', badge: 'Top 15%' }, { logo: 'linear-gradient(135deg, #3b82f6, #2563eb)', letter: 'F', company: 'Flowpay', type: 'Analytics', badge: 'Top 8%' }, { logo: 'linear-gradient(135deg, #f59e0b, #d97706)', letter: 'N', company: 'Nestaway', type: 'Pricing', badge: 'Top 12%' }].map((item) => (<div key={item.company} style={{ display: 'flex', alignItems: 'center', gap: 12, background: item.featured ? 'linear-gradient(135deg, rgba(255,107,107,0.06) 0%, rgba(255,107,107,0.02) 100%)' : '#fafafa', borderRadius: 12, padding: isMobile ? 10 : 14, border: item.featured ? '1.5px solid rgba(255,107,107,0.3)' : '1px solid transparent' }}><div style={{ width: isMobile ? 36 : 42, height: isMobile ? 36 : 42, borderRadius: 10, background: item.logo, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, fontWeight: 700, flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>{item.letter}</div><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 700, color: '#0a0a0a' }}>{item.company}</div><div style={{ fontSize: 12, color: '#71717a' }}>{item.type}</div></div><div style={{ fontSize: isMobile ? 10 : 11, fontWeight: 700, padding: '5px 10px', borderRadius: 6, background: 'rgba(255,107,107,0.1)', color: '#ff6b6b', flexShrink: 0 }}>{item.badge}</div></div>))}</div></div></MockupFrame>} />
 
-        <Step number="07" title="Get Hired" description="Companies reach out directly based on your portfolio" mockup={<MockupFrame dark><div style={{ padding: isMobile ? 24 : 36, minHeight: isMobile ? 280 : 340, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}><div style={{ width: isMobile ? 48 : 64, height: isMobile ? 48 : 64, background: '#ff3008', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}><svg width={isMobile ? 24 : 32} height={isMobile ? 24 : 32} viewBox="0 0 24 24" fill="white"><path d="M23.071 8.409a6.09 6.09 0 0 0-5.396-3.228H.584A.589.589 0 0 0 .17 6.184L3.894 9.93a1.752 1.752 0 0 0 1.242.516h12.049a1.554 1.554 0 1 1 0 3.108H8.235a.59.59 0 0 0-.415 1.003l3.725 3.747a1.75 1.75 0 0 0 1.242.516h4.398a6.098 6.098 0 0 0 5.886-7.411z"/></svg></div><div style={{ background: 'rgba(255,107,107,0.12)', color: '#ff6b6b', fontSize: isMobile ? 10 : 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 3, padding: '8px 20px', borderRadius: 100, marginBottom: 14 }}>Official Offer</div><div style={{ color: 'white', fontSize: isMobile ? 28 : 40, fontWeight: 900, marginBottom: 10, letterSpacing: '-0.02em' }}>You're Hired</div><div style={{ color: '#71717a', fontSize: isMobile ? 13 : 15, marginBottom: 24 }}>Data Analyst - San Francisco</div><div style={{ display: 'flex', gap: isMobile ? 16 : 32, flexWrap: 'wrap', justifyContent: 'center' }}><div style={{ textAlign: 'center' }}><div style={{ color: '#52525b', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Base</div><div style={{ color: 'white', fontSize: isMobile ? 20 : 26, fontWeight: 800 }}>$125K</div></div><div style={{ textAlign: 'center' }}><div style={{ color: '#52525b', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Bonus</div><div style={{ color: 'white', fontSize: isMobile ? 20 : 26, fontWeight: 800 }}>$20K</div></div><div style={{ textAlign: 'center' }}><div style={{ color: '#52525b', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Year 1</div><div style={{ color: '#ff6b6b', fontSize: isMobile ? 24 : 32, fontWeight: 900 }}>$165K</div></div></div></div></MockupFrame>} />
+        <Step number="07" title="Get Hired" description="Companies reach out directly based on your portfolio" mockup={<MockupFrame dark><div style={{ padding: isMobile ? 24 : 36, minHeight: isMobile ? 280 : 340, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}><div style={{ width: isMobile ? 56 : 72, height: isMobile ? 56 : 72, background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, color: 'white', fontSize: isMobile ? 24 : 32, fontWeight: 700, boxShadow: '0 8px 24px rgba(16,185,129,0.4)' }}>R</div><div style={{ background: 'rgba(255,107,107,0.12)', color: '#ff6b6b', fontSize: isMobile ? 10 : 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 3, padding: '8px 20px', borderRadius: 100, marginBottom: 14 }}>Official Offer</div><div style={{ color: 'white', fontSize: isMobile ? 28 : 40, fontWeight: 900, marginBottom: 10, letterSpacing: '-0.02em' }}>You're Hired</div><div style={{ color: '#71717a', fontSize: isMobile ? 13 : 15, marginBottom: 24 }}>Data Analyst - San Francisco</div><div style={{ display: 'flex', gap: isMobile ? 16 : 32, flexWrap: 'wrap', justifyContent: 'center' }}><div style={{ textAlign: 'center' }}><div style={{ color: '#52525b', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Base</div><div style={{ color: 'white', fontSize: isMobile ? 20 : 26, fontWeight: 800 }}>$125K</div></div><div style={{ textAlign: 'center' }}><div style={{ color: '#52525b', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Bonus</div><div style={{ color: 'white', fontSize: isMobile ? 20 : 26, fontWeight: 800 }}>$20K</div></div><div style={{ textAlign: 'center' }}><div style={{ color: '#52525b', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Year 1</div><div style={{ color: '#ff6b6b', fontSize: isMobile ? 24 : 32, fontWeight: 900 }}>$165K</div></div></div></div></MockupFrame>} />
 
         <motion.div ref={ctaRef} initial={{ opacity: 0, y: 60, scale: 0.95 }} animate={ctaInView ? { opacity: 1, y: 0, scale: 1 } : {}} transition={{ duration: 0.8, ease: smooth }} style={{ background: '#0a0a0a', borderRadius: isMobile ? 16 : 24, padding: isMobile ? 24 : 48, position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: -100, right: -100, width: 300, height: 300, background: 'radial-gradient(circle, rgba(255,107,107,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
@@ -303,6 +148,7 @@ function WhatIsApex() {
   const [hasShownPrompt, setHasShownPrompt] = useState(false);
   const videoInView = useInView(videoContainerRef, { amount: 0.3 });
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const navigateWithScroll = useScrollSave();
 
   useEffect(() => { if (!videoInView && isPlaying && videoRef.current) { videoRef.current.pause(); setIsPlaying(false); setShowPauseButton(true); } }, [videoInView, isPlaying]);
   useEffect(() => { const h = () => { if (document.hidden && isPlaying && videoRef.current) { videoRef.current.pause(); setIsPlaying(false); setShowPauseButton(true); } }; document.addEventListener('visibilitychange', h); return () => document.removeEventListener('visibilitychange', h); }, [isPlaying]);
@@ -312,20 +158,7 @@ function WhatIsApex() {
 
   const handlePlay = () => { if (videoRef.current) { videoRef.current.play(); setIsPlaying(true); setIsEnded(false); setShowPauseButton(false); } };
   const handleVideoClick = () => { if (isPlaying && videoRef.current) { videoRef.current.pause(); setIsPlaying(false); setShowPauseButton(true); } };
-  
-  // Exit fullscreen when video ends
-  const handleEnded = () => { 
-    setIsPlaying(false); 
-    setIsEnded(true); 
-    setProgress(100);
-    // Exit fullscreen if in fullscreen mode
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    } else if ((document as any).webkitFullscreenElement) {
-      (document as any).webkitExitFullscreen();
-    }
-  };
-  
+  const handleEnded = () => { setIsPlaying(false); setIsEnded(true); setProgress(100); if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); } else if ((document as any).webkitFullscreenElement) { (document as any).webkitExitFullscreen(); } };
   const handleReplay = () => { if (videoRef.current) { videoRef.current.currentTime = 0; videoRef.current.play(); setIsPlaying(true); setIsEnded(false); setShowPauseButton(false); } };
   const toggleMute = (e: React.MouseEvent) => { e.stopPropagation(); if (videoRef.current) { videoRef.current.muted = !videoRef.current.muted; setIsMuted(!isMuted); } };
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); const p = (e.clientX - r.left) / r.width; if (videoRef.current?.duration) { videoRef.current.currentTime = p * videoRef.current.duration; setProgress(p * 100); } };
@@ -337,7 +170,7 @@ function WhatIsApex() {
         <motion.div initial="hidden" animate={isInView ? "visible" : "hidden"} variants={fadeInUp} custom={0} style={{ textAlign: 'center', marginBottom: isMobile ? 32 : 48 }}><span style={{ color: '#ff6b6b', fontSize: 14, fontWeight: 500 }}>What is APEX?</span><h2 style={{ marginTop: 12, fontSize: isMobile ? 26 : 32, fontWeight: 700, color: '#0a0a0a', letterSpacing: '-0.02em', lineHeight: 1.2 }}>A new way to prove<br />what you can do</h2></motion.div>
         <div ref={videoContainerRef} style={{ margin: isMobile ? '0 auto 48px' : '0 auto 72px', maxWidth: 1100, lineHeight: 0, fontSize: 0 }}>
           <motion.div initial={{ opacity: 0, y: 40 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.8, delay: 0.2 }} style={{ position: 'relative', lineHeight: 0, fontSize: 0, overflow: 'hidden', borderRadius: isMobile ? 12 : 0 }}>
-            <video ref={videoRef} style={{ width: '100%', display: 'block', verticalAlign: 'top' }} src="/APEX-Product-Video.mp4" playsInline onEnded={handleEnded} onClick={handleVideoClick} />
+            <video ref={videoRef} style={{ width: '100%', display: 'block', verticalAlign: 'top' }} src="/APEX-Product-Video.mov" playsInline onEnded={handleEnded} onClick={handleVideoClick} />
             <AnimatePresence>{showFullscreenPrompt && isPlaying && !isMobile && (<motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} style={{ position: 'absolute', top: 24, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 20, pointerEvents: 'none' }}><motion.button onClick={goFullscreen} animate={{ y: [0, -3, 0] }} transition={{ y: { duration: 2, repeat: Infinity, ease: "easeInOut" } }} whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }} style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 12, background: 'linear-gradient(135deg, rgba(255,107,107,0.95) 0%, rgba(255,80,80,0.95) 100%)', backdropFilter: 'blur(10px)', border: 'none', borderRadius: 16, padding: '16px 28px', cursor: 'pointer', boxShadow: '0 10px 40px rgba(255,107,107,0.4), 0 0 0 1px rgba(255,255,255,0.1) inset' }}><motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1.5, repeat: Infinity }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></motion.div><span style={{ color: 'white', fontSize: 16, fontWeight: 700 }}>Watch in Full Quality</span></motion.button></motion.div>)}</AnimatePresence>
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: isMobile ? '16px 12px 8px' : '24px 16px 12px 16px', display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, opacity: isPlaying ? 0.3 : 1, transition: 'opacity 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.opacity = '1'} onMouseLeave={(e) => e.currentTarget.style.opacity = isPlaying ? '0.3' : '1'}><div onClick={handleProgressClick} style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.3)', borderRadius: 2, cursor: 'pointer' }}><div style={{ width: `${progress}%`, height: '100%', background: '#ff6b6b', borderRadius: 2, transition: 'width 0.1s linear' }} /></div><button onClick={toggleMute} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }} aria-label={isMuted ? "Unmute" : "Mute"}>{isMuted ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>}</button>{!isMobile && <button onClick={goFullscreen} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }} aria-label="Fullscreen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>}</div>
             <AnimatePresence>{!isPlaying && !isEnded && !showPauseButton && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handlePlay} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }} /><motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={{ position: 'relative', zIndex: 10, width: isMobile ? 64 : 80, height: isMobile ? 64 : 80, background: '#ff6b6b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Play style={{ width: isMobile ? 24 : 32, height: isMobile ? 24 : 32, color: 'white', marginLeft: 4 }} fill="white" /></motion.div></motion.div>)}</AnimatePresence>
@@ -345,7 +178,34 @@ function WhatIsApex() {
             <AnimatePresence>{isEnded && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleReplay} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} /><motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}><div style={{ width: isMobile ? 64 : 80, height: isMobile ? 64 : 80, background: '#ff6b6b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><RotateCcw style={{ width: isMobile ? 24 : 32, height: isMobile ? 24 : 32, color: 'white' }} /></div><span style={{ color: 'white', fontSize: 14, fontWeight: 500 }}>Watch again</span></motion.div></motion.div>)}</AnimatePresence>
           </motion.div>
         </div>
-        <motion.div initial="hidden" animate={isInView ? "visible" : "hidden"} variants={fadeInUp} custom={0.3} style={{ maxWidth: 680, margin: '0 auto', textAlign: 'center' }}><span style={{ color: '#ff6b6b', fontSize: 13, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>The credential</span><h3 style={{ marginTop: 12, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: '#0a0a0a', letterSpacing: '-0.02em' }}>Earn the APEX Degree</h3><p style={{ marginTop: 20, color: '#52525b', fontSize: isMobile ? 15 : 17, lineHeight: 1.7 }}>The APEX degree is a portfolio of verified work that commands respect. When employers see APEX on your resume, they know you've mastered real-world challenges and defended your expertise live.</p></motion.div>
+        <motion.div initial="hidden" animate={isInView ? "visible" : "hidden"} variants={fadeInUp} custom={0.3} style={{ maxWidth: 680, margin: '0 auto', textAlign: 'center' }}>
+          <span style={{ color: '#ff6b6b', fontSize: 13, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>The credential</span>
+          <h3 style={{ marginTop: 12, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: '#0a0a0a', letterSpacing: '-0.02em' }}>Earn the APEX Degree</h3>
+          <p style={{ marginTop: 20, color: '#52525b', fontSize: isMobile ? 15 : 17, lineHeight: 1.7 }}>The APEX degree is a portfolio of verified work that commands respect. When employers see APEX on your resume, they know you've mastered real-world challenges and defended your expertise live.</p>
+          <motion.button 
+            onClick={() => navigateWithScroll('/learn-more')} 
+            whileHover={{ scale: 1.03, y: -2 }} 
+            whileTap={{ scale: 0.98 }} 
+            style={{ 
+              marginTop: 28, 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: 8, 
+              background: 'transparent', 
+              color: '#ff6b6b', 
+              fontSize: 15, 
+              fontWeight: 600, 
+              padding: '12px 24px', 
+              borderRadius: 100, 
+              border: '2px solid #ff6b6b', 
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Learn more about the degree
+            <ArrowRight style={{ width: 16, height: 16 }} />
+          </motion.button>
+        </motion.div>
       </div>
     </section>
   );
@@ -406,7 +266,7 @@ function Employers() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const candidates = [{ name: 'Sarah Chen', rank: 'Top 5%', score: 94, initials: 'SC', color: '#ff6b6b', projects: 12, skills: ['SQL', 'Python', 'Tableau', 'dbt'], companies: ['DoorDash', 'Stripe', 'Airbnb'], highlight: 'Built a churn prediction model that identified $2.3M in at-risk revenue' }, { name: 'Marcus Johnson', rank: 'Top 8%', score: 91, initials: 'MJ', color: '#667eea', projects: 10, skills: ['Python', 'R', 'PowerBI', 'SQL'], companies: ['Spotify', 'Netflix', 'Uber'], highlight: 'Designed A/B testing framework that improved conversion by 34%' }];
+  const candidates = [{ name: 'Sarah Chen', rank: 'Top 5%', score: 94, initials: 'SC', color: '#ff6b6b', projects: 12, skills: ['SQL', 'Python', 'Tableau', 'dbt'], companies: ['Rushly', 'Flowpay', 'Nestaway'], highlight: 'Built a churn prediction model that identified $2.3M in at-risk revenue' }, { name: 'Marcus Johnson', rank: 'Top 8%', score: 91, initials: 'MJ', color: '#667eea', projects: 10, skills: ['Python', 'R', 'PowerBI', 'SQL'], companies: ['Melodix', 'Streamly', 'Zipride'], highlight: 'Designed A/B testing framework that improved conversion by 34%' }];
 
   return (
     <section ref={ref} style={{ padding: isMobile ? '60px 0' : '120px 0', background: '#0a0a0a', overflow: 'hidden', position: 'relative' }}>
@@ -441,8 +301,7 @@ function Footer() {
   return (
     <footer style={{ padding: '28px 0', background: '#fafafa', borderTop: '1px solid #e5e5e5' }}>
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? '0 20px' : '0 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 16 : 0 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0a0a0a' }}><Image src="/APEX-Final-Black.svg?v=100" alt="APEX Logo" width={24} height={24} style={{ height: 24, width: 24 }} unoptimized /><span style={{ fontSize: 13, fontWeight: 500 }}>{BRAND}</span></div><div style={{ display: 'flex', gap: 20, fontSize: 13, color: '#a1a1aa' }}><a href="#" style={{ textDecoration: 'none', color: 'inherit' }}>Privacy</a><a href="#" style={{ textDecoration: 'none', color: 'inherit' }}>Terms</a></div></div>
-        <div style={{ paddingTop: 16, borderTop: '1px solid #e5e5e5' }}><p style={{ fontSize: 11, color: '#a1a1aa', textAlign: 'center', lineHeight: 1.6 }}>APEX is not currently partnered with or affiliated with any of the companies mentioned above. Company names and logos are used for illustrative purposes only to demonstrate the types of real-world challenges students may encounter.</p></div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 16 : 0 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0a0a0a' }}><Image src="/APEX-Final-Black.svg?v=100" alt="APEX Logo" width={24} height={24} style={{ height: 24, width: 24 }} unoptimized /><span style={{ fontSize: 13, fontWeight: 500 }}>{BRAND}</span></div><div style={{ display: 'flex', gap: 20, fontSize: 13, color: '#a1a1aa' }}><a href="#" style={{ textDecoration: 'none', color: 'inherit' }}>Privacy</a><a href="#" style={{ textDecoration: 'none', color: 'inherit' }}>Terms</a></div></div>
       </div>
     </footer>
   );
