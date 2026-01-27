@@ -502,49 +502,105 @@ function SQLSection() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, amount: 0.3 });
-  const [typed, setTyped] = useState('');
-  const fullQuery = "SELECT customer_id, COUNT(*) as orders\nFROM orders\nGROUP BY customer_id\nHAVING COUNT(*) > 3;";
-  
+  const [typed, setTyped] = useState("");
+  const fullQuery =
+    "SELECT customer_id, COUNT(*) as orders\nFROM orders\nGROUP BY customer_id\nHAVING COUNT(*) > 3;";
+
   useEffect(() => {
     if (isInView && typed.length < fullQuery.length) {
       const timer = setTimeout(() => setTyped(fullQuery.slice(0, typed.length + 1)), 40);
       return () => clearTimeout(timer);
     }
   }, [isInView, typed, fullQuery]);
-  
+
   return (
-    <section ref={ref} style={{ background: '#fafafa', padding: isMobile ? '70px 20px' : '100px 24px' }}>
-      <div style={{ maxWidth: 700, margin: '0 auto' }}>
-        <motion.h2 initial={{ opacity: 0, y: 20 }} animate={isInView ? { opacity: 1, y: 0 } : {}} style={{ fontSize: isMobile ? 32 : 44, fontWeight: 800, color: '#0a0a0a', textAlign: 'center', marginBottom: 16 }}>Learn by doing</motion.h2>
-        <motion.p initial={{ opacity: 0 }} animate={isInView ? { opacity: 1 } : {}} transition={{ delay: 0.1 }} style={{ color: '#71717a', fontSize: 17, textAlign: 'center', marginBottom: 48 }}>Write real code, see instant results</motion.p>
-        
+    <section ref={ref} style={{ background: "#fafafa", padding: isMobile ? "70px 20px" : "100px 24px" }}>
+      <div style={{ maxWidth: 700, margin: "0 auto" }}>
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          style={{ fontSize: isMobile ? 32 : 44, fontWeight: 800, color: "#0a0a0a", textAlign: "center", marginBottom: 16 }}
+        >
+          Learn by doing
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={isInView ? { opacity: 1 } : {}}
+          transition={{ delay: 0.1 }}
+          style={{ color: "#71717a", fontSize: 17, textAlign: "center", marginBottom: 48 }}
+        >
+          Write real code, see instant results
+        </motion.p>
+
         <AppChrome>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
             {/* Code editor */}
-            <div style={{ padding: 20, borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.05)', borderBottom: isMobile ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <Terminal style={{ width: 16, height: 16, color: '#f59e0b' }} />
-                <span style={{ color: '#71717a', fontSize: 12, fontWeight: 600 }}>QUERY</span>
+            <div
+              style={{
+                padding: 20,
+                borderRight: isMobile ? "none" : "1px solid rgba(255,255,255,0.05)",
+                borderBottom: isMobile ? "1px solid rgba(255,255,255,0.05)" : "none",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                <Terminal style={{ width: 16, height: 16, color: "#f59e0b" }} />
+                <span style={{ color: "#71717a", fontSize: 12, fontWeight: 600 }}>QUERY</span>
               </div>
-              <pre style={{ fontFamily: 'monospace', fontSize: 14, color: '#10b981', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>
-                {typed}<motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.8, repeat: Infinity }} style={{ color: '#ff6b6b' }}>|</motion.span>
+
+              <pre style={{ fontFamily: "monospace", fontSize: 14, color: "#10b981", lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>
+                {typed}
+                <motion.span
+                  animate={{ opacity: [1, 0, 1] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                  style={{ color: "#ff6b6b" }}
+                >
+                  |
+                </motion.span>
               </pre>
             </div>
-            
+
             {/* Results table */}
             <div style={{ padding: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <Table style={{ width: 16, height: 16, color: '#3b82f6' }} />
-                <span style={{ color: '#71717a', fontSize: 12, fontWeight: 600 }}>RESULTS</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                <Table style={{ width: 16, height: 16, color: "#3b82f6" }} />
+                <span style={{ color: "#71717a", fontSize: 12, fontWeight: 600 }}>RESULTS</span>
               </div>
-              <motion.div initial={{ opacity: 0 }} animate={isInView && typed.length === fullQuery.length ? { opacity: 1 } : {}} transition={{ delay: 0.3 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: 'rgba(255,255,255,0.1)', borderRadius: 8, overflow: 'hidden' }}>
-                  <div style={{ background: '#1a1a1e', padding: '10px 14px', fontSize: 12, color: '#71717a', fontWeight: 600 }}>customer_id</div>
-                  <div style={{ background: '#1a1a1e', padding: '10px 14px', fontSize: 12, color: '#71717a', fontWeight: 600 }}>orders</div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={isInView && typed.length === fullQuery.length ? { opacity: 1 } : {}}
+                transition={{ delay: 0.3 }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 1,
+                    background: "rgba(255,255,255,0.1)",
+                    borderRadius: 8,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div style={{ background: "#1a1a1e", padding: "10px 14px", fontSize: 12, color: "#71717a", fontWeight: 600 }}>
+                    customer_id
+                  </div>
+                  <div style={{ background: "#1a1a1e", padding: "10px 14px", fontSize: 12, color: "#71717a", fontWeight: 600 }}>
+                    orders
+                  </div>
+
                   {[[1042, 7], [1089, 5], [1156, 4]].map(([id, orders], i) => (
-                    <motion.div key={i} initial={{ opacity: 0 }} animate={isInView && typed.length === fullQuery.length ? { opacity: 1 } : {}} transition={{ delay: 0.4 + i * 0.1 }} style={{ contents: true as any }}>
-                      <div style={{ background: '#111113', padding: '10px 14px', fontSize: 13, color: 'white' }}>{id}</div>
-                      <div style={{ background: '#111113', padding: '10px 14px', fontSize: 13, color: '#10b981', fontWeight: 600 }}>{orders}</div>
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0 }}
+                      animate={isInView && typed.length === fullQuery.length ? { opacity: 1 } : {}}
+                      transition={{ delay: 0.4 + i * 0.1 }}
+                      style={{ display: "contents" }}
+                    >
+                      <div style={{ background: "#111113", padding: "10px 14px", fontSize: 13, color: "white" }}>{id}</div>
+                      <div style={{ background: "#111113", padding: "10px 14px", fontSize: 13, color: "#10b981", fontWeight: 600 }}>
+                        {orders}
+                      </div>
                     </motion.div>
                   ))}
                 </div>
