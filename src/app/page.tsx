@@ -25,17 +25,42 @@ function useMediaQuery(query: string): boolean {
 
 function useScrollSave() {
   const router = useRouter();
+  
+  // Use this for navigation where you want to save scroll position (e.g., Apply buttons)
   const navigateWithScroll = (url: string) => {
-    if (typeof window !== 'undefined') sessionStorage.setItem('scrollPosition', window.scrollY.toString());
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('scrollPosition', window.scrollY.toString());
+      sessionStorage.setItem('scrollSource', window.location.pathname);
+    }
     router.push(url);
   };
+  
+  // Use this for fresh navigation where page should start at top (e.g., Learn More)
+  const navigateFresh = (url: string) => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('scrollPosition');
+      sessionStorage.removeItem('scrollSource');
+    }
+    router.push(url);
+  };
+  
+  // Restore scroll position only if returning to the same page we left from
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedPosition = sessionStorage.getItem('scrollPosition');
-      if (savedPosition) { window.scrollTo(0, parseInt(savedPosition)); sessionStorage.removeItem('scrollPosition'); }
+      const scrollSource = sessionStorage.getItem('scrollSource');
+      
+      // Only restore if we're returning to the page we originally left from
+      if (savedPosition && scrollSource === window.location.pathname) {
+        window.scrollTo(0, parseInt(savedPosition));
+      }
+      // Clean up
+      sessionStorage.removeItem('scrollPosition');
+      sessionStorage.removeItem('scrollSource');
     }
   }, []);
-  return navigateWithScroll;
+  
+  return { navigateWithScroll, navigateFresh };
 }
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: (delay: number = 0) => ({ opacity: 1, y: 0, transition: { duration: 1, ease: smooth, delay } }) };
@@ -49,7 +74,7 @@ function Hero() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const isTablet = useMediaQuery("(max-width: 1024px)");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const navigateWithScroll = useScrollSave();
+  const { navigateWithScroll } = useScrollSave();
 
   return (
     <section ref={ref} style={{ position: 'relative', minHeight: '100vh', background: '#0a0a0a', overflow: 'hidden' }}>
@@ -98,7 +123,7 @@ function Journey() {
   const ctaRef = useRef(null);
   const ctaInView = useInView(ctaRef, { once: true, margin: "-50px" });
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const navigateWithScroll = useScrollSave();
+  const { navigateWithScroll } = useScrollSave();
 
   return (
     <section id="method" ref={ref} style={{ background: '#fafafa' }}>
@@ -148,7 +173,7 @@ function WhatIsApex() {
   const [hasShownPrompt, setHasShownPrompt] = useState(false);
   const videoInView = useInView(videoContainerRef, { amount: 0.3 });
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const navigateWithScroll = useScrollSave();
+  const { navigateWithScroll, navigateFresh } = useScrollSave();
 
   useEffect(() => { if (!videoInView && isPlaying && videoRef.current) { videoRef.current.pause(); setIsPlaying(false); setShowPauseButton(true); } }, [videoInView, isPlaying]);
   useEffect(() => { const h = () => { if (document.hidden && isPlaying && videoRef.current) { videoRef.current.pause(); setIsPlaying(false); setShowPauseButton(true); } }; document.addEventListener('visibilitychange', h); return () => document.removeEventListener('visibilitychange', h); }, [isPlaying]);
@@ -183,7 +208,7 @@ function WhatIsApex() {
           <h3 style={{ marginTop: 12, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: '#0a0a0a', letterSpacing: '-0.02em' }}>Earn the APEX Degree</h3>
           <p style={{ marginTop: 20, color: '#52525b', fontSize: isMobile ? 15 : 17, lineHeight: 1.7 }}>The APEX degree is a portfolio of verified work that commands respect. When employers see APEX on your resume, they know you've mastered real-world challenges and defended your expertise live.</p>
           <motion.button 
-            onClick={() => navigateWithScroll('/learn-more')} 
+            onClick={() => navigateFresh('/learn-more')} 
             whileHover={{ scale: 1.03, y: -2 }} 
             whileTap={{ scale: 0.98 }} 
             style={{ 
@@ -215,7 +240,7 @@ function Tracks() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const navigateWithScroll = useScrollSave();
+  const { navigateWithScroll } = useScrollSave();
   const tracks = [{ name: 'Data Analytics', desc: 'SQL, Python, visualization', unlocked: true, Icon: BarChart3 }, { name: 'Product Management', desc: 'Strategy, metrics, roadmaps', unlocked: false, Icon: Rocket }, { name: 'Software Engineering', desc: 'Full-stack development', unlocked: false, Icon: Code }, { name: 'UX Design', desc: 'Research, prototyping, systems', unlocked: false, Icon: Palette }, { name: 'Marketing', desc: 'Growth, analytics, campaigns', unlocked: false, Icon: TrendingUp }, { name: 'Finance', desc: 'Modeling, analysis, valuation', unlocked: false, Icon: DollarSign }];
 
   return (
@@ -251,7 +276,7 @@ function Pricing() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const navigateWithScroll = useScrollSave();
+  const { navigateWithScroll } = useScrollSave();
   return (
     <section id="pricing" ref={ref} style={{ padding: isMobile ? '60px 0' : '120px 0', background: '#fafafa' }}>
       <div style={{ maxWidth: 460, margin: '0 auto', padding: isMobile ? '0 20px' : '0 24px' }}>
