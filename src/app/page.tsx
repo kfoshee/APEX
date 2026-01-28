@@ -168,9 +168,10 @@ function WhatIsApex() {
   const [isEnded, setIsEnded] = useState(false);
   const [showPauseButton, setShowPauseButton] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
-  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
-  const [hasShownPrompt, setHasShownPrompt] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [showPrompts, setShowPrompts] = useState(false);
+  const [hasShownPrompts, setHasShownPrompts] = useState(false);
+  const [promptsTimerId, setPromptsTimerId] = useState<NodeJS.Timeout | null>(null);
   const videoInView = useInView(videoContainerRef, { amount: 0.3 });
   const isMobile = useMediaQuery("(max-width: 768px)");
   const { navigateWithScroll, navigateFresh } = useScrollSave();
@@ -178,16 +179,80 @@ function WhatIsApex() {
   useEffect(() => { if (!videoInView && isPlaying && videoRef.current) { videoRef.current.pause(); setIsPlaying(false); setShowPauseButton(true); } }, [videoInView, isPlaying]);
   useEffect(() => { const h = () => { if (document.hidden && isPlaying && videoRef.current) { videoRef.current.pause(); setIsPlaying(false); setShowPauseButton(true); } }; document.addEventListener('visibilitychange', h); return () => document.removeEventListener('visibilitychange', h); }, [isPlaying]);
   useEffect(() => { const v = videoRef.current; if (!v) return; const u = () => { if (v.duration) setProgress((v.currentTime / v.duration) * 100); }; v.addEventListener('timeupdate', u); return () => v.removeEventListener('timeupdate', u); }, []);
-  useEffect(() => { let t: NodeJS.Timeout; if (isPlaying && !hasShownPrompt && !isMobile) { t = setTimeout(() => { setShowFullscreenPrompt(true); setHasShownPrompt(true); }, 2000); } return () => clearTimeout(t); }, [isPlaying, hasShownPrompt, isMobile]);
-  useEffect(() => { let t: NodeJS.Timeout; if (showFullscreenPrompt) { t = setTimeout(() => setShowFullscreenPrompt(false), 3000); } return () => clearTimeout(t); }, [showFullscreenPrompt]);
+  
+  // Show prompts after 2 seconds of playback
+  useEffect(() => { 
+    let t: NodeJS.Timeout; 
+    if (isPlaying && !hasShownPrompts) { 
+      t = setTimeout(() => { 
+        setShowPrompts(true); 
+        setHasShownPrompts(true);
+        // Set timer to hide prompts after 4 seconds
+        const hideTimer = setTimeout(() => setShowPrompts(false), 4000);
+        setPromptsTimerId(hideTimer);
+      }, 2000); 
+    } 
+    return () => clearTimeout(t); 
+  }, [isPlaying, hasShownPrompts]);
+  
+  // Clear prompts timer on unmount
+  useEffect(() => {
+    return () => {
+      if (promptsTimerId) clearTimeout(promptsTimerId);
+    };
+  }, [promptsTimerId]);
 
-  const handlePlay = () => { if (videoRef.current) { videoRef.current.play(); setIsPlaying(true); setIsEnded(false); setShowPauseButton(false); } };
+  const handlePlay = () => { 
+    if (videoRef.current) { 
+      videoRef.current.play(); 
+      setIsPlaying(true); 
+      setIsEnded(false); 
+      setShowPauseButton(false); 
+    } 
+  };
   const handleVideoClick = () => { if (isPlaying && videoRef.current) { videoRef.current.pause(); setIsPlaying(false); setShowPauseButton(true); } };
-  const handleEnded = () => { setIsPlaying(false); setIsEnded(true); setProgress(100); if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); } else if ((document as any).webkitFullscreenElement) { (document as any).webkitExitFullscreen(); } };
-  const handleReplay = () => { if (videoRef.current) { videoRef.current.currentTime = 0; videoRef.current.play(); setIsPlaying(true); setIsEnded(false); setShowPauseButton(false); } };
-  const toggleMute = (e: React.MouseEvent) => { e.stopPropagation(); if (videoRef.current) { videoRef.current.muted = !videoRef.current.muted; setIsMuted(!isMuted); } };
+  const handleEnded = () => { setIsPlaying(false); setIsEnded(true); setProgress(100); setShowPrompts(false); if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); } else if ((document as any).webkitFullscreenElement) { (document as any).webkitExitFullscreen(); } };
+  const handleReplay = () => { 
+    if (videoRef.current) { 
+      videoRef.current.currentTime = 0; 
+      videoRef.current.play(); 
+      setIsPlaying(true); 
+      setIsEnded(false); 
+      setShowPauseButton(false);
+      // Reset prompts for replay
+      setHasShownPrompts(false);
+    } 
+  };
+  
+  const handleUnmute = (e: React.MouseEvent) => { 
+    e.stopPropagation(); 
+    if (videoRef.current) { 
+      videoRef.current.muted = false; 
+      setIsMuted(false); 
+    }
+    // Don't hide prompts when clicking unmute - let the timer handle it
+  };
+  
+  const toggleMute = (e: React.MouseEvent) => { 
+    e.stopPropagation(); 
+    if (videoRef.current) { 
+      videoRef.current.muted = !videoRef.current.muted; 
+      setIsMuted(!isMuted); 
+    } 
+  };
+  
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); const p = (e.clientX - r.left) / r.width; if (videoRef.current?.duration) { videoRef.current.currentTime = p * videoRef.current.duration; setProgress(p * 100); } };
-  const goFullscreen = (e: React.MouseEvent) => { e.stopPropagation(); const v = videoRef.current; if (v) { if (v.requestFullscreen) v.requestFullscreen(); else if ((v as any).webkitRequestFullscreen) (v as any).webkitRequestFullscreen(); else if ((v as any).msRequestFullscreen) (v as any).msRequestFullscreen(); } setShowFullscreenPrompt(false); };
+  
+  const goFullscreen = (e: React.MouseEvent) => { 
+    e.stopPropagation(); 
+    const v = videoRef.current; 
+    if (v) { 
+      if (v.requestFullscreen) v.requestFullscreen(); 
+      else if ((v as any).webkitRequestFullscreen) (v as any).webkitRequestFullscreen(); 
+      else if ((v as any).msRequestFullscreen) (v as any).msRequestFullscreen(); 
+    }
+    // Don't hide prompts when clicking fullscreen - let the timer handle it
+  };
 
   return (
     <section id="what" ref={sectionRef} style={{ padding: isMobile ? '60px 0' : '96px 0', background: 'white', overflow: 'hidden' }}>
@@ -195,9 +260,94 @@ function WhatIsApex() {
         <motion.div initial="hidden" animate={isInView ? "visible" : "hidden"} variants={fadeInUp} custom={0} style={{ textAlign: 'center', marginBottom: isMobile ? 32 : 48 }}><span style={{ color: '#ff6b6b', fontSize: 14, fontWeight: 500 }}>What is APEX?</span><h2 style={{ marginTop: 12, fontSize: isMobile ? 26 : 32, fontWeight: 700, color: '#0a0a0a', letterSpacing: '-0.02em', lineHeight: 1.2 }}>A new way to prove<br />what you can do</h2></motion.div>
         <div ref={videoContainerRef} style={{ margin: isMobile ? '0 auto 48px' : '0 auto 72px', maxWidth: 1100, lineHeight: 0, fontSize: 0 }}>
           <motion.div initial={{ opacity: 0, y: 40 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.8, delay: 0.2 }} style={{ position: 'relative', lineHeight: 0, fontSize: 0, overflow: 'hidden', borderRadius: isMobile ? 12 : 0 }}>
-            <video ref={videoRef} style={{ width: '100%', display: 'block', verticalAlign: 'top' }} src="/APEX-Product-Video.mov" playsInline onEnded={handleEnded} onClick={handleVideoClick} />
-            <AnimatePresence>{showFullscreenPrompt && isPlaying && !isMobile && (<motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} style={{ position: 'absolute', top: 24, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 20, pointerEvents: 'none' }}><motion.button onClick={goFullscreen} animate={{ y: [0, -3, 0] }} transition={{ y: { duration: 2, repeat: Infinity, ease: "easeInOut" } }} whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }} style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 12, background: 'linear-gradient(135deg, rgba(255,107,107,0.95) 0%, rgba(255,80,80,0.95) 100%)', backdropFilter: 'blur(10px)', border: 'none', borderRadius: 16, padding: '16px 28px', cursor: 'pointer', boxShadow: '0 10px 40px rgba(255,107,107,0.4), 0 0 0 1px rgba(255,255,255,0.1) inset' }}><motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1.5, repeat: Infinity }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></motion.div><span style={{ color: 'white', fontSize: 16, fontWeight: 700 }}>Watch in Full Quality</span></motion.button></motion.div>)}</AnimatePresence>
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: isMobile ? '16px 12px 8px' : '24px 16px 12px 16px', display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, opacity: isPlaying ? 0.3 : 1, transition: 'opacity 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.opacity = '1'} onMouseLeave={(e) => e.currentTarget.style.opacity = isPlaying ? '0.3' : '1'}><div onClick={handleProgressClick} style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.3)', borderRadius: 2, cursor: 'pointer' }}><div style={{ width: `${progress}%`, height: '100%', background: '#ff6b6b', borderRadius: 2, transition: 'width 0.1s linear' }} /></div><button onClick={toggleMute} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }} aria-label={isMuted ? "Unmute" : "Mute"}>{isMuted ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>}</button>{!isMobile && <button onClick={goFullscreen} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }} aria-label="Fullscreen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>}</div>
+            <video ref={videoRef} style={{ width: '100%', display: 'block', verticalAlign: 'top' }} src="/APEX-Product-Video.mov" playsInline muted onEnded={handleEnded} onClick={handleVideoClick} />
+            
+            {/* Floating prompts - Unmute and Fullscreen buttons */}
+            <AnimatePresence>
+              {showPrompts && isPlaying && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -20 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  exit={{ opacity: 0, y: -20 }} 
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} 
+                  style={{ position: 'absolute', top: 24, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 12, zIndex: 20, pointerEvents: 'none' }}
+                >
+                  {/* Unmute Button */}
+                  {isMuted && (
+                    <motion.button 
+                      onClick={handleUnmute} 
+                      animate={{ y: [0, -3, 0] }} 
+                      transition={{ y: { duration: 2, repeat: Infinity, ease: "easeInOut" } }} 
+                      whileHover={{ scale: 1.08 }} 
+                      whileTap={{ scale: 0.95 }} 
+                      style={{ 
+                        pointerEvents: 'auto', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 10, 
+                        background: 'linear-gradient(135deg, rgba(16,185,129,0.95) 0%, rgba(5,150,105,0.95) 100%)', 
+                        backdropFilter: 'blur(10px)', 
+                        border: 'none', 
+                        borderRadius: 16, 
+                        padding: isMobile ? '12px 20px' : '16px 28px', 
+                        cursor: 'pointer', 
+                        boxShadow: '0 10px 40px rgba(16,185,129,0.4), 0 0 0 1px rgba(255,255,255,0.1) inset' 
+                      }}
+                    >
+                      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                          <line x1="23" y1="9" x2="17" y2="15"/>
+                          <line x1="17" y1="9" x2="23" y2="15"/>
+                        </svg>
+                      </motion.div>
+                      <span style={{ color: 'white', fontSize: isMobile ? 14 : 16, fontWeight: 700 }}>Tap to Unmute</span>
+                    </motion.button>
+                  )}
+                  
+                  {/* Fullscreen Button */}
+                  {!isMobile && (
+                    <motion.button 
+                      onClick={goFullscreen} 
+                      animate={{ y: [0, -3, 0] }} 
+                      transition={{ y: { duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.2 } }} 
+                      whileHover={{ scale: 1.08 }} 
+                      whileTap={{ scale: 0.95 }} 
+                      style={{ 
+                        pointerEvents: 'auto', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 10, 
+                        background: 'linear-gradient(135deg, rgba(255,107,107,0.95) 0%, rgba(255,80,80,0.95) 100%)', 
+                        backdropFilter: 'blur(10px)', 
+                        border: 'none', 
+                        borderRadius: 16, 
+                        padding: '16px 28px', 
+                        cursor: 'pointer', 
+                        boxShadow: '0 10px 40px rgba(255,107,107,0.4), 0 0 0 1px rgba(255,255,255,0.1) inset' 
+                      }}
+                    >
+                      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                        </svg>
+                      </motion.div>
+                      <span style={{ color: 'white', fontSize: 16, fontWeight: 700 }}>Watch Fullscreen</span>
+                    </motion.button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: isMobile ? '16px 12px 8px' : '24px 16px 12px 16px', display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, opacity: isPlaying ? 0.3 : 1, transition: 'opacity 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.opacity = '1'} onMouseLeave={(e) => e.currentTarget.style.opacity = isPlaying ? '0.3' : '1'}>
+              <div onClick={handleProgressClick} style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.3)', borderRadius: 2, cursor: 'pointer' }}>
+                <div style={{ width: `${progress}%`, height: '100%', background: '#ff6b6b', borderRadius: 2, transition: 'width 0.1s linear' }} />
+              </div>
+              <button onClick={toggleMute} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }} aria-label={isMuted ? "Unmute" : "Mute"}>
+                {isMuted ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>}
+              </button>
+              {!isMobile && <button onClick={goFullscreen} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }} aria-label="Fullscreen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>}
+            </div>
             <AnimatePresence>{!isPlaying && !isEnded && !showPauseButton && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handlePlay} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }} /><motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={{ position: 'relative', zIndex: 10, width: isMobile ? 64 : 80, height: isMobile ? 64 : 80, background: '#ff6b6b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Play style={{ width: isMobile ? 24 : 32, height: isMobile ? 24 : 32, color: 'white', marginLeft: 4 }} fill="white" /></motion.div></motion.div>)}</AnimatePresence>
             <AnimatePresence>{showPauseButton && !isEnded && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handlePlay} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }} /><motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={{ position: 'relative', zIndex: 10, width: isMobile ? 64 : 80, height: isMobile ? 64 : 80, background: '#ff6b6b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Play style={{ width: isMobile ? 24 : 32, height: isMobile ? 24 : 32, color: 'white', marginLeft: 4 }} fill="white" /></motion.div></motion.div>)}</AnimatePresence>
             <AnimatePresence>{isEnded && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleReplay} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} /><motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}><div style={{ width: isMobile ? 64 : 80, height: isMobile ? 64 : 80, background: '#ff6b6b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><RotateCcw style={{ width: isMobile ? 24 : 32, height: isMobile ? 24 : 32, color: 'white' }} /></div><span style={{ color: 'white', fontSize: 14, fontWeight: 500 }}>Watch again</span></motion.div></motion.div>)}</AnimatePresence>
@@ -299,7 +449,17 @@ function Employers() {
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 20px' : '0 24px', position: 'relative' }}>
         <motion.div initial={{ opacity: 0, y: 40 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.8, ease: smooth }} style={{ textAlign: 'center', marginBottom: isMobile ? 36 : 64 }}><motion.span initial={{ opacity: 0 }} animate={isInView ? { opacity: 1 } : {}} transition={{ duration: 0.5, delay: 0.1 }} style={{ color: '#ff6b6b', fontSize: 13, fontWeight: 600 }}>For Employers</motion.span><motion.h2 initial={{ opacity: 0, y: 20 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.7, delay: 0.2 }} style={{ marginTop: 12, fontSize: isMobile ? 28 : 36, fontWeight: 800, color: 'white', letterSpacing: '-0.03em' }}>See the work before you hire</motion.h2><motion.p initial={{ opacity: 0 }} animate={isInView ? { opacity: 1 } : {}} transition={{ duration: 0.6, delay: 0.35 }} style={{ marginTop: 16, color: '#71717a', fontSize: 16, maxWidth: 500, margin: '16px auto 0' }}>Browse verified portfolios. Hire with confidence.</motion.p></motion.div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 24 }}>{candidates.map((c, i) => (<motion.div key={c.name} initial={{ opacity: 0, y: 50, scale: 0.95 }} animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}} transition={{ duration: 0.7, delay: 0.4 + i * 0.15, ease: smooth }} whileHover={{ y: -8, scale: 1.02 }} style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)', borderRadius: 24, padding: isMobile ? 20 : 32, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', overflow: 'hidden' }}><motion.div style={{ position: 'absolute', top: 0, right: 0, width: 200, height: 200, background: `radial-gradient(circle, ${c.color}20 0%, transparent 70%)`, pointerEvents: 'none' }} animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} /><div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, position: 'relative', flexWrap: 'wrap', gap: 12 }}><div style={{ display: 'flex', alignItems: 'center', gap: 16 }}><motion.div whileHover={{ scale: 1.1, rotate: 5 }} style={{ width: isMobile ? 48 : 64, height: isMobile ? 48 : 64, borderRadius: 20, background: `linear-gradient(135deg, ${c.color}, ${c.color}88)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: isMobile ? 16 : 20, fontWeight: 700, boxShadow: `0 8px 24px ${c.color}40`, flexShrink: 0 }}>{c.initials}</motion.div><div><div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: 'white' }}>{c.name}</div><div style={{ fontSize: 14, color: '#71717a', marginTop: 2 }}>{c.projects} verified projects</div></div></div><motion.div initial={{ scale: 0 }} animate={isInView ? { scale: 1 } : {}} transition={{ duration: 0.5, delay: 0.6 + i * 0.15, type: "spring" }} style={{ background: c.color, color: 'white', fontSize: 14, fontWeight: 700, padding: '8px 16px', borderRadius: 100 }}>{c.rank}</motion.div></div><motion.div initial={{ opacity: 0, x: -20 }} animate={isInView ? { opacity: 1, x: 0 } : {}} transition={{ duration: 0.6, delay: 0.7 + i * 0.15 }} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 16, marginBottom: 24 }}><p style={{ color: '#d4d4d8', fontSize: isMobile ? 14 : 15, lineHeight: 1.5, margin: 0 }}>"{c.highlight}"</p></motion.div><div style={{ marginBottom: 20 }}><div style={{ fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Skills</div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{c.skills.map((s, j) => (<motion.span key={s} initial={{ opacity: 0, scale: 0.8 }} animate={isInView ? { opacity: 1, scale: 1 } : {}} transition={{ duration: 0.4, delay: 0.8 + i * 0.15 + j * 0.05 }} style={{ background: 'rgba(255,255,255,0.1)', color: '#a1a1aa', fontSize: 13, fontWeight: 500, padding: '6px 12px', borderRadius: 8 }}>{s}</motion.span>))}</div></div><div><div style={{ fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Challenge Companies</div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{c.companies.map((co, j) => (<motion.span key={co} initial={{ opacity: 0, y: 10 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.4, delay: 0.9 + i * 0.15 + j * 0.05 }} style={{ background: `${c.color}15`, color: c.color, fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 6 }}>{co}</motion.span>))}</div></div><motion.div initial={{ opacity: 0 }} animate={isInView ? { opacity: 1 } : {}} transition={{ duration: 0.5, delay: 1 + i * 0.15 }} style={{ position: isMobile ? 'relative' : 'absolute', bottom: isMobile ? 0 : 24, right: isMobile ? 0 : 24, display: 'flex', alignItems: 'center', gap: 6, marginTop: isMobile ? 16 : 0, justifyContent: isMobile ? 'flex-end' : 'flex-start' }}><span style={{ color: '#52525b', fontSize: 13 }}>Score</span><span style={{ color: 'white', fontSize: 24, fontWeight: 800 }}>{c.score}</span></motion.div></motion.div>))}</div>
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.6, delay: 1.2 }} style={{ marginTop: 48, textAlign: 'center' }}><motion.a href="#" whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.98 }} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#ff6b6b', color: 'white', fontSize: 15, fontWeight: 600, padding: '14px 28px', borderRadius: 100, textDecoration: 'none' }}>Browse more candidates<ArrowRight style={{ width: 16, height: 16 }} /></motion.a></motion.div>
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.6, delay: 1.2 }} style={{ marginTop: 48, textAlign: 'center' }}>
+          <motion.a 
+            href="https://apex.degree/employers" 
+            whileHover={{ scale: 1.03, y: -2 }} 
+            whileTap={{ scale: 0.98 }} 
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#ff6b6b', color: 'white', fontSize: 15, fontWeight: 600, padding: '14px 28px', borderRadius: 100, textDecoration: 'none' }}
+          >
+            Browse more candidates
+            <ArrowRight style={{ width: 16, height: 16 }} />
+          </motion.a>
+        </motion.div>
       </div>
     </section>
   );
