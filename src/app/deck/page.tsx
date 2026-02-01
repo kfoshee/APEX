@@ -30,13 +30,13 @@ export default function DeckPage() {
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap');
         * { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
-        html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
-        body { margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+        body { margin: 0; padding: 0; overflow-x: hidden; }
         ::selection { background: rgba(255,107,107,0.2); }
         a { text-decoration: none; }
       `}</style>
 
-      <main style={{ minHeight: "100vh", background: "#0a0a0a", color: "white", position: "relative", overflow: "hidden" }}>
+      <main style={{ minHeight: "100vh", background: "#0a0a0a", color: "white", position: "relative", overflowX: "hidden" }}>
         {/* Animated Background Elements */}
         <motion.div
           style={{
@@ -260,15 +260,26 @@ export default function DeckPage() {
               borderRadius: isMobile ? 16 : 24,
               overflow: "hidden",
               border: "1px solid #27272a",
-              background: "linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
+              background: "#18181b",
               boxShadow: "0 40px 100px -40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05) inset",
             }}
           >
-            <iframe
-              src={`${pdfPath}#view=FitH`}
-              title="APEX Pitch Deck"
-              style={{ width: "100%", height: isMobile ? "70vh" : "80vh", border: 0, display: "block" }}
-            />
+            <div style={{
+              padding: isMobile ? "16px" : "24px",
+              background: "#18181b",
+            }}>
+              <div style={{
+                borderRadius: isMobile ? 8 : 12,
+                overflow: "hidden",
+                background: "#27272a",
+              }}>
+                <iframe
+                  src={`${pdfPath}#view=FitH`}
+                  title="APEX Pitch Deck"
+                  style={{ width: "100%", height: isMobile ? "65vh" : "75vh", border: 0, display: "block" }}
+                />
+              </div>
+            </div>
           </motion.div>
 
           {/* Mobile Fallback */}
