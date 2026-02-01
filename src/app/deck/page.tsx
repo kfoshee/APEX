@@ -288,7 +288,7 @@ export default function DeckPage() {
                   background: "#27272a",
                 }}>
                   <iframe
-                    src={`${pdfPath}#view=FitH`}
+                    src={`${pdfPath}#view=FitH&navpanes=0&toolbar=0`}
                     title="APEX Pitch Deck"
                     style={{ width: "100%", height: isMobile ? "65vh" : "75vh", border: 0, display: "block" }}
                   />
