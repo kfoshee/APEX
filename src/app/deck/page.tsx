@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Download, ArrowLeft, Menu, X } from "lucide-react";
+import { Download, ArrowLeft, Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 
@@ -292,56 +292,6 @@ export default function DeckPage() {
             <a href={pdfPath} style={{ color: "#ff6b6b", fontWeight: 600, textDecoration: "none" }}>
               Open PDF directly
             </a>
-          </motion.div>
-
-          {/* CTA Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: smooth, delay: 0.9 }}
-            style={{
-              marginTop: isMobile ? 48 : 64,
-              background: "linear-gradient(135deg, rgba(255,107,107,0.08) 0%, rgba(255,107,107,0.02) 100%)",
-              border: "1px solid rgba(255,107,107,0.2)",
-              borderRadius: isMobile ? 16 : 20,
-              padding: isMobile ? "28px 20px" : "36px 40px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexDirection: isMobile ? "column" : "row",
-              gap: 24,
-              textAlign: isMobile ? "center" : "left",
-            }}
-          >
-            <div>
-              <h3 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: "white", marginBottom: 8 }}>
-                Interested in investing?
-              </h3>
-              <p style={{ color: "#a1a1aa", fontSize: 15, margin: 0 }}>
-                Let's talk about the future of education credentials.
-              </p>
-            </div>
-            <motion.a
-              href="mailto:investors@apex.degree"
-              whileHover={{ scale: 1.03, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                background: "white",
-                color: "#0a0a0a",
-                fontSize: 14,
-                fontWeight: 600,
-                padding: "14px 28px",
-                borderRadius: 100,
-                textDecoration: "none",
-                flexShrink: 0,
-              }}
-            >
-              Get in touch
-              <ArrowRight style={{ width: 16, height: 16 }} />
-            </motion.a>
           </motion.div>
         </div>
 
