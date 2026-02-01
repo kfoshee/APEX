@@ -29,19 +29,39 @@ export default function DeckPage() {
     <>
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap');
-        * { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
-        html { overflow-x: hidden !important; }
-        body { overflow-x: hidden !important; margin: 0; padding: 0; }
+        * { 
+          font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; 
+          margin: 0; 
+          padding: 0; 
+          box-sizing: border-box; 
+        }
+        html, body { 
+          overflow-x: hidden !important; 
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0; 
+          padding: 0; 
+          position: relative;
+          overscroll-behavior-x: none;
+          -webkit-overflow-scrolling: touch;
+        }
+        #__next {
+          overflow-x: hidden !important;
+          width: 100% !important;
+          max-width: 100% !important;
+        }
         ::selection { background: rgba(255,107,107,0.2); }
         a { text-decoration: none; }
       `}</style>
 
       <div style={{ 
-        width: "100vw", 
-        maxWidth: "100vw", 
+        width: "100%", 
+        maxWidth: "100%", 
         overflowX: "hidden",
+        overflowY: "visible",
         minHeight: "100vh",
-        background: "#0a0a0a"
+        background: "#0a0a0a",
+        position: "relative"
       }}>
         <main style={{ 
           minHeight: "100vh", 
@@ -49,11 +69,21 @@ export default function DeckPage() {
           color: "white", 
           position: "relative", 
           width: "100%",
-          maxWidth: "100vw",
+          maxWidth: "100%",
           overflowX: "hidden"
         }}>
           {/* Animated Background Elements */}
-          <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+          <div style={{ 
+            position: "absolute", 
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            overflow: "hidden", 
+            pointerEvents: "none",
+            clip: "rect(0, auto, auto, 0)",
+            clipPath: "inset(0)"
+          }}>
             <motion.div
               style={{
                 position: "absolute",
