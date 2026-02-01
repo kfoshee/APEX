@@ -26,17 +26,16 @@ export default function DeckPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <>
+    <div style={{ overflowX: "hidden", width: "100%", minHeight: "100vh" }}>
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap');
         * { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
-        html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-        body { margin: 0; padding: 0; overflow-x: hidden; }
+        html, body { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; overflow-x: hidden; margin: 0; padding: 0; }
         ::selection { background: rgba(255,107,107,0.2); }
         a { text-decoration: none; }
       `}</style>
 
-      <main style={{ minHeight: "100vh", background: "#0a0a0a", color: "white", position: "relative", overflowX: "hidden" }}>
+      <main style={{ minHeight: "100vh", background: "#0a0a0a", color: "white", position: "relative", overflow: "hidden" }}>
         {/* Animated Background Elements */}
         <motion.div
           style={{
@@ -373,6 +372,6 @@ export default function DeckPage() {
           </div>
         </motion.footer>
       </main>
-    </>
+    </div>
   );
 }
