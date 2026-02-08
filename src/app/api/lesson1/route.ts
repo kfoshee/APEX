@@ -6,10 +6,79 @@ import { ExternalAccountClient, GoogleAuth } from "google-auth-library";
 import { getVercelOidcToken } from "@vercel/oidc";
 import { jsonrepair } from "jsonrepair";
 
+/* ═══════════════════════════════════════════════════════════
+   CONFIG
+   ═══════════════════════════════════════════════════════════ */
+
 const LOCATION = process.env.GCP_LOCATION || "us-central1";
 const MODEL = process.env.VERTEX_MODEL || "gemini-2.5-flash";
 const DOCAI_LOCATION = process.env.DOCAI_LOCATION || "us";
 const DOCAI_PROCESSOR_ID = process.env.DOCAI_PROCESSOR_ID || "776c52b2d795c6e3";
+
+/* ═══════════════════════════════════════════════════════════
+   TYPES — matches the page's Zod schema exactly
+   ═══════════════════════════════════════════════════════════ */
+
+interface OrderRow {
+  id: number;
+  customer: string;
+  color?: string;
+  item: string;
+  price: string;
+}
+
+interface QuizOption {
+  label: string;
+  value: string | number;
+  correct?: boolean;
+}
+
+interface MatchingPair {
+  left: string;
+  right: string;
+}
+
+interface Visual {
+  type: "live_table" | "count_demo" | "matching" | "sql_playground";
+  orders?: OrderRow[];
+  revealSpeed?: number;
+  people?: { name: string; color: string }[];
+  pairs?: MatchingPair[];
+  shuffleRight?: boolean;
+  defaultQuery?: string;
+  hint?: string;
+}
+
+interface Slide {
+  id: string;
+  type: "intro" | "concept" | "quiz" | "checkpoint" | "summary";
+  title?: string;
+  subtitle?: string;
+  body?: string;
+  badge?: string;
+  badgeColor?: string;
+  badgeIcon?: string;
+  visual?: Visual;
+  options?: QuizOption[];
+  checklist?: { icon?: string; text: string }[];
+  phases?: { content: string; delay?: number }[];
+  autoAdvance?: boolean;
+  successMessage?: string;
+  failureMessage?: string;
+  remediation?: string;
+}
+
+interface Lesson {
+  id: string;
+  title: string;
+  description?: string;
+  estimatedMinutes?: number;
+  slides: Slide[];
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GEMINI SYSTEM PROMPT
+   ═══════════════════════════════════════════════════════════ */
 
 const SYSTEM = `You are creating an interactive data analytics lesson. Return ONLY valid JSON.
 
@@ -26,7 +95,7 @@ Return exactly this structure with 10 slides:
     { "id": "4", "type": "concept", "headline": "Understanding Grain", "bullets": ["KEY: Grain = what ONE row represents", "Orders table: one row = one order", "Customers table: one row = one customer"] },
     { "id": "5", "type": "quiz", "headline": "Quick Check", "prompt": "In a table where each row is one order, what is the grain?", "options": ["Customer", "Product", "Order", "Date"], "expected": "Order" },
     { "id": "6", "type": "interactive", "headline": "COUNT vs COUNT DISTINCT", "subheadline": "Click to see the difference in action", "visual": { "type": "count_demo" } },
-    { "id": "7", "type": "interactive", "headline": "Try It Yourself", "subheadline": "Edit and run this SQL query", "visual": { "type": "sql_playground", "code": "SELECT\\n  COUNT(*) as total_orders,\\n  COUNT(DISTINCT customer_id) as unique_customers\\nFROM orders;", "result": [["total_orders", "unique_customers"], ["5", "3"]] } },
+    { "id": "7", "type": "interactive", "headline": "Try It Yourself", "subheadline": "Edit and run this SQL query", "visual": { "type": "sql_playground" } },
     { "id": "8", "type": "interactive", "headline": "Match the Concepts", "visual": { "type": "matching", "pairs": [{ "left": "COUNT(*)", "right": "Counts all rows" }, { "left": "COUNT DISTINCT", "right": "Counts unique values" }, { "left": "Grain", "right": "What one row represents" }] } },
     { "id": "9", "type": "checkpoint", "headline": "Final Challenge", "prompt": "How many UNIQUE customers placed orders? Use COUNT or COUNT DISTINCT?", "expected": "count distinct", "hint": "You want unique values, not total rows" },
     { "id": "10", "type": "summary", "headline": "Lesson Complete!", "bullets": ["Metrics need clear inclusion rules", "Grain = what one row represents", "COUNT DISTINCT for unique values"] }
@@ -35,30 +104,30 @@ Return exactly this structure with 10 slides:
 
 Keep content professional. Don't over-personalize.`;
 
+/* ═══════════════════════════════════════════════════════════
+   JSON HELPERS
+   ═══════════════════════════════════════════════════════════ */
+
 function extractJson(text: string) {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("No JSON");
+  if (start === -1 || end === -1) throw new Error("No JSON found in response");
   return text.slice(start, end + 1);
 }
 
 function parseDeckJson(raw: string) {
   const text = (raw || "").trim();
-  if (!text) throw new Error("Empty");
-  try {
-    return JSON.parse(text);
-  } catch { }
-  try {
-    return JSON.parse(extractJson(text));
-  } catch { }
-  try {
-    return JSON.parse(jsonrepair(text));
-  } catch { }
-  try {
-    return JSON.parse(jsonrepair(extractJson(text)));
-  } catch { }
-  throw new Error("JSON parse failed");
+  if (!text) throw new Error("Empty response");
+  try { return JSON.parse(text); } catch { /* continue */ }
+  try { return JSON.parse(extractJson(text)); } catch { /* continue */ }
+  try { return JSON.parse(jsonrepair(text)); } catch { /* continue */ }
+  try { return JSON.parse(jsonrepair(extractJson(text))); } catch { /* continue */ }
+  throw new Error("JSON parse failed after all attempts");
 }
+
+/* ═══════════════════════════════════════════════════════════
+   AUTH HELPERS
+   ═══════════════════════════════════════════════════════════ */
 
 async function getAuthHeaders() {
   const {
@@ -74,8 +143,6 @@ async function getAuthHeaders() {
     GCP_WORKLOAD_IDENTITY_POOL_ID &&
     GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID
   ) {
-    // ExternalAccountClient.fromJSON has a nullable return type in the typings.
-    // Guard it so TS (and runtime) are both safe.
     const maybeClient = ExternalAccountClient.fromJSON({
       type: "external_account",
       audience: `//iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID}`,
@@ -93,11 +160,15 @@ async function getAuthHeaders() {
   return await (await auth.getClient()).getRequestHeaders();
 }
 
-function getAuth(h: any): string | null {
+function getAuth(h: Headers | Record<string, string>): string | null {
   if (!h) return null;
-  if (typeof h.get === "function") return h.get("authorization") || h.get("Authorization");
+  if (h instanceof Headers) return h.get("authorization") ?? h.get("Authorization");
   return h.authorization || h.Authorization || null;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   DOCAI TEXT EXTRACTION
+   ═══════════════════════════════════════════════════════════ */
 
 async function extractText(params: { projectId: string; auth: string; base64: string }) {
   const url = `https://${DOCAI_LOCATION}-documentai.googleapis.com/v1/projects/${params.projectId}/locations/${DOCAI_LOCATION}/processors/${DOCAI_PROCESSOR_ID}:process`;
@@ -111,25 +182,9 @@ async function extractText(params: { projectId: string; auth: string; base64: st
   return (data?.document?.text || "").replace(/\s+/g, " ").trim().slice(0, 3000);
 }
 
-function normalize(deck: any) {
-  return {
-    theme: String(deck?.theme || "Data Foundations"),
-    title: String(deck?.title || "Lesson 1"),
-    slides: (Array.isArray(deck?.slides) ? deck.slides : []).map((s: any, i: number) => ({
-      id: String(s?.id || i + 1),
-      type: s?.type || "concept",
-      headline: String(s?.headline || `Slide ${i + 1}`),
-      subheadline: s?.subheadline || "",
-      bullets: Array.isArray(s?.bullets) ? s.bullets.map(String) : [],
-      code: String(s?.code || "").replace(/\\n/g, "\n"),
-      prompt: s?.prompt || "",
-      expected: s?.expected || "",
-      hint: s?.hint || "",
-      options: Array.isArray(s?.options) ? s.options : [],
-      visual: s?.visual || undefined,
-    })),
-  };
-}
+/* ═══════════════════════════════════════════════════════════
+   GEMINI GENERATION
+   ═══════════════════════════════════════════════════════════ */
 
 async function generate(params: { projectId: string; auth: string; resume: string }) {
   const url = `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${params.projectId}/locations/${LOCATION}/publishers/google/models/${MODEL}:generateContent`;
@@ -137,126 +192,463 @@ async function generate(params: { projectId: string; auth: string; resume: strin
     method: "POST",
     headers: { Authorization: params.auth, "Content-Type": "application/json" },
     body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: `Context: ${params.resume.slice(0, 1500)}\n\nGenerate the lesson.` }],
-        },
-      ],
+      contents: [{
+        role: "user",
+        parts: [{ text: `Context: ${params.resume.slice(0, 1500)}\n\nGenerate the lesson.` }],
+      }],
       systemInstruction: { role: "system", parts: [{ text: SYSTEM }] },
       generationConfig: { temperature: 0.2, maxOutputTokens: 2500, responseMimeType: "application/json" },
     }),
   });
   const data = await resp.json();
-  if (!resp.ok) throw new Error(`API error ${resp.status}`);
+  if (!resp.ok) throw new Error(`Vertex API error ${resp.status}`);
   return parseDeckJson(data?.candidates?.[0]?.content?.parts?.[0]?.text || "");
 }
 
-// Rich fallback with all interactive types
-function fallback() {
+/* ═══════════════════════════════════════════════════════════
+   SAMPLE DATA — embedded into visuals
+   ═══════════════════════════════════════════════════════════ */
+
+const SAMPLE_ORDERS: OrderRow[] = [
+  { id: 1, customer: "Alice", color: "#6366f1", item: "Latte", price: "$4.50" },
+  { id: 2, customer: "Bob", color: "#f97316", item: "Cappuccino", price: "$5.00" },
+  { id: 3, customer: "Alice", color: "#6366f1", item: "Croissant", price: "$3.25" },
+  { id: 4, customer: "Carol", color: "#ec4899", item: "Espresso", price: "$3.00" },
+  { id: 5, customer: "Bob", color: "#f97316", item: "Blueberry Scone", price: "$4.00" },
+  { id: 6, customer: "Alice", color: "#6366f1", item: "Iced Tea", price: "$3.50" },
+];
+
+const SAMPLE_PEOPLE = [
+  { name: "Alice", color: "#6366f1" },
+  { name: "Bob", color: "#f97316" },
+  { name: "Alice", color: "#6366f1" },
+  { name: "Carol", color: "#ec4899" },
+  { name: "Bob", color: "#f97316" },
+  { name: "Alice", color: "#6366f1" },
+];
+
+/* ═══════════════════════════════════════════════════════════
+   TRANSFORM: raw Gemini deck → page Lesson schema
+   ═══════════════════════════════════════════════════════════
+
+   The page's Zod schema expects a very specific shape per slide type.
+   This function bridges the gap between the LLM's freeform output and
+   the rigid typed structure the UI needs.
+   ═══════════════════════════════════════════════════════════ */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformToLesson(deck: any): Lesson {
+  const rawSlides: any[] = Array.isArray(deck?.slides) ? deck.slides : [];
+  if (rawSlides.length < 3) throw new Error("Too few slides from generation");
+
+  const slides: Slide[] = rawSlides.map((raw, i) => {
+    const id = String(raw?.id || i + 1);
+    const rawType = String(raw?.type || "concept");
+    const headline = String(raw?.headline || `Slide ${i + 1}`);
+    const subheadline = raw?.subheadline ? String(raw.subheadline) : undefined;
+    const bullets: string[] = Array.isArray(raw?.bullets) ? raw.bullets.map(String) : [];
+
+    switch (rawType) {
+      /* ── INTRO ── */
+      case "intro": {
+        const phases = bullets.length > 0
+          ? [
+            { content: "Analyzing your background…", delay: 1000 },
+            { content: "Building your personalized lesson…", delay: 2500 },
+            { content: bullets.map((b) => `**${b}**`).join("\n"), delay: 4000 },
+          ]
+          : undefined;
+        return {
+          id,
+          type: "intro",
+          title: headline,
+          subtitle: subheadline,
+          badge: "Lesson 1",
+          badgeColor: "#6366f1",
+          badgeIcon: "Database",
+          phases,
+        };
+      }
+
+      /* ── CONCEPT ── */
+      case "concept": {
+        // Convert bullets to a body paragraph with **bold** markers for KEY items
+        const body = bullets
+          .map((b) => {
+            if (b.startsWith("KEY:")) return `**${b.replace("KEY: ", "")}**`;
+            if (b.startsWith("⚠")) return `**${b}**`;
+            return b;
+          })
+          .join("\n\n");
+        // Determine badge from content
+        const isGrain = headline.toLowerCase().includes("grain");
+        const isMetric = headline.toLowerCase().includes("metric");
+        return {
+          id,
+          type: "concept",
+          title: headline,
+          subtitle: subheadline,
+          body: body || undefined,
+          badge: isGrain ? "Core Concept" : isMetric ? "Foundation" : "Concept",
+          badgeColor: isGrain ? "#f97316" : isMetric ? "#6366f1" : "#3b82f6",
+          badgeIcon: isGrain ? "Eye" : isMetric ? "Lightbulb" : "Zap",
+        };
+      }
+
+      /* ── INTERACTIVE → concept or checkpoint with embedded visual ── */
+      case "interactive": {
+        const visualType = raw?.visual?.type;
+
+        if (visualType === "live_table") {
+          return {
+            id,
+            type: "concept",
+            title: headline,
+            subtitle: subheadline ?? "Press play to watch orders arrive",
+            badge: "Interactive",
+            badgeColor: "#6366f1",
+            badgeIcon: "Play",
+            visual: {
+              type: "live_table",
+              orders: SAMPLE_ORDERS,
+              revealSpeed: 600,
+            },
+          };
+        }
+
+        if (visualType === "count_demo") {
+          return {
+            id,
+            type: "concept",
+            title: headline,
+            subtitle: subheadline ?? "Watch the count build up",
+            body: "**COUNT(*)** counts every row. **COUNT(DISTINCT customer)** counts each person only once — duplicates are skipped.",
+            badge: "Key Difference",
+            badgeColor: "#10b981",
+            badgeIcon: "Hash",
+            visual: {
+              type: "count_demo",
+              people: SAMPLE_PEOPLE,
+            },
+          };
+        }
+
+        if (visualType === "sql_playground") {
+          return {
+            id,
+            type: "checkpoint",
+            title: headline,
+            subtitle: subheadline,
+            body: "Try both queries below to see the difference. Start with `COUNT(*)`, then try `COUNT(DISTINCT customer)`.",
+            badge: "Hands-On",
+            badgeColor: "#6366f1",
+            badgeIcon: "Terminal",
+            visual: {
+              type: "sql_playground",
+              orders: SAMPLE_ORDERS,
+              defaultQuery: "SELECT COUNT(*) FROM orders;",
+              hint: "After running COUNT(*), change it to COUNT(DISTINCT customer) and compare.",
+            },
+          };
+        }
+
+        if (visualType === "matching") {
+          const rawPairs = Array.isArray(raw?.visual?.pairs) ? raw.visual.pairs : [];
+          const pairs: MatchingPair[] = rawPairs.length > 0
+            ? rawPairs.map((p: { left?: string; right?: string }) => ({
+              left: String(p?.left || ""),
+              right: String(p?.right || ""),
+            }))
+            : [
+              { left: "COUNT(*)", right: "Counts all rows" },
+              { left: "COUNT(DISTINCT)", right: "Counts unique values only" },
+              { left: "Grain", right: "What one row represents" },
+            ];
+          return {
+            id,
+            type: "checkpoint",
+            title: headline,
+            body: "Match each SQL concept on the left with its definition on the right.",
+            badge: "Practice",
+            badgeColor: "#eab308",
+            badgeIcon: "Zap",
+            visual: {
+              type: "matching",
+              pairs,
+              shuffleRight: true,
+            },
+          };
+        }
+
+        // Unknown visual → concept with body
+        return {
+          id,
+          type: "concept",
+          title: headline,
+          subtitle: subheadline,
+          body: bullets.join("\n\n") || undefined,
+        };
+      }
+
+      /* ── QUIZ ── */
+      case "quiz": {
+        const rawOptions: string[] = Array.isArray(raw?.options) ? raw.options.map(String) : [];
+        const expected = String(raw?.expected || "").toLowerCase();
+        const prompt = raw?.prompt ? String(raw.prompt) : undefined;
+
+        const options: QuizOption[] = rawOptions.map((opt) => ({
+          label: opt,
+          value: opt,
+          correct: opt.toLowerCase() === expected,
+        }));
+
+        // Ensure at least one option is marked correct
+        if (options.length > 0 && !options.some((o) => o.correct)) {
+          options[0].correct = true;
+        }
+
+        return {
+          id,
+          type: "quiz",
+          title: headline,
+          subtitle: prompt,
+          body: raw?.hint ? `💡 ${raw.hint}` : undefined,
+          badge: "Quiz",
+          badgeColor: "#6366f1",
+          badgeIcon: "Lightbulb",
+          options,
+          successMessage: "That's right!",
+          failureMessage: "Not quite — think about what one row represents.",
+          remediation: "Each row in this table is a single order. The **grain** tells you what one row means. If each row = one order, then the grain is 'order'.",
+        };
+      }
+
+      /* ── CHECKPOINT ── */
+      case "checkpoint": {
+        const prompt = raw?.prompt ? String(raw.prompt) : undefined;
+        const hint = raw?.hint ? String(raw.hint) : undefined;
+
+        // Convert to a quiz-style checkpoint with options
+        return {
+          id,
+          type: "quiz",
+          title: headline,
+          subtitle: prompt,
+          body: hint ? `💡 ${hint}` : undefined,
+          badge: "Challenge",
+          badgeColor: "#f97316",
+          badgeIcon: "Award",
+          options: [
+            { label: "COUNT(*)", value: "count", correct: false },
+            { label: "COUNT(DISTINCT customer)", value: "count distinct", correct: true },
+          ],
+          successMessage: "Exactly! DISTINCT removes duplicates.",
+          failureMessage: "COUNT(*) counts all rows, including duplicates.",
+          remediation: "**COUNT(*)** would give you the total number of orders. But the question asks for **unique customers** — you need **COUNT(DISTINCT customer)** to skip duplicates.",
+          visual: {
+            type: "count_demo",
+            people: SAMPLE_PEOPLE,
+          },
+        };
+      }
+
+      /* ── SUMMARY ── */
+      case "summary": {
+        const iconMap: Record<number, string> = { 0: "Eye", 1: "Hash", 2: "Users", 3: "Check" };
+        const checklist = bullets.map((b, bi) => ({
+          icon: iconMap[bi] || "Check",
+          text: b.replace(/^KEY:\s*/, ""),
+        }));
+        return {
+          id,
+          type: "summary",
+          title: headline,
+          body: "You've built a solid foundation in data analytics. These concepts are the building blocks for everything that follows.",
+          checklist,
+        };
+      }
+
+      /* ── FALLBACK ── */
+      default:
+        return {
+          id,
+          type: "concept" as const,
+          title: headline,
+          body: bullets.join("\n\n") || subheadline || undefined,
+        };
+    }
+  });
+
   return {
-    theme: "Data Foundations",
+    id: "lesson-1-data-foundations",
+    title: String(deck?.title || "Lesson 1: Data Foundations"),
+    description: "Master metrics, grain, and SQL counting",
+    estimatedMinutes: 3,
+    slides,
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   COMPLETE FALLBACK — directly in page Lesson schema
+   ═══════════════════════════════════════════════════════════ */
+
+function fallbackLesson(): Lesson {
+  return {
+    id: "lesson-1-data-foundations",
     title: "Lesson 1: Data Foundations",
+    description: "Master metrics, grain, and SQL counting",
+    estimatedMinutes: 3,
     slides: [
       {
         id: "1",
         type: "intro",
-        headline: "Welcome to Data Foundations",
-        subheadline: "Master the essential concepts every data analyst needs to know",
-        bullets: ["Define clear metrics", "Understand data structure", "Master SQL counting"],
+        title: "Welcome to Data Foundations",
+        badge: "Lesson 1",
+        badgeColor: "#6366f1",
+        badgeIcon: "Database",
+        phases: [
+          { content: "Analyzing your background…", delay: 1000 },
+          { content: "Building your personalized lesson…", delay: 2500 },
+          { content: "**Define clear metrics**\n**Understand data structure**\n**Master SQL counting**", delay: 4000 },
+        ],
       },
       {
         id: "2",
         type: "concept",
-        headline: "What is a Metric?",
-        bullets: [
-          "KEY: A metric is a number that measures something specific in your business",
-          "Every metric needs inclusion rules: WHAT counts, WHEN it counts, WHERE it counts",
-          "Example: 'Monthly Active Users' = users who logged in at least once this month",
-          "⚠ Without clear rules, different people will calculate different numbers!",
-        ],
+        title: "What is a Metric?",
+        badge: "Foundation",
+        badgeColor: "#6366f1",
+        badgeIcon: "Lightbulb",
+        body: "**A metric is a number that measures something specific in your business.**\n\nEvery metric needs inclusion rules: WHAT counts, WHEN it counts, WHERE it counts.\n\nExample: 'Monthly Active Users' = users who logged in at least once this month.\n\n**Without clear rules, different people will calculate different numbers!**",
       },
       {
         id: "3",
-        type: "interactive",
-        headline: "Watch Data Build Up",
-        subheadline: "See how orders accumulate in a real database table",
-        visual: { type: "live_table" },
+        type: "concept",
+        title: "Watch Data Build Up",
+        subtitle: "Press play to watch orders arrive",
+        badge: "Interactive",
+        badgeColor: "#6366f1",
+        badgeIcon: "Play",
+        visual: {
+          type: "live_table",
+          orders: SAMPLE_ORDERS,
+          revealSpeed: 600,
+        },
       },
       {
         id: "4",
         type: "concept",
-        headline: "Dataset Grain: The Foundation",
-        bullets: [
-          "KEY: Grain = what ONE ROW represents in your dataset",
-          "In an orders table: one row = one order",
-          "In a customers table: one row = one customer",
-          "Understanding grain prevents double-counting mistakes",
-        ],
+        title: "Dataset Grain: The Foundation",
+        badge: "Core Concept",
+        badgeColor: "#f97316",
+        badgeIcon: "Eye",
+        body: "**Grain = what ONE ROW represents in your dataset.**\n\nIn an orders table: one row = one order.\nIn a customers table: one row = one customer.\n\nUnderstanding grain prevents double-counting mistakes.",
       },
       {
         id: "5",
         type: "quiz",
-        headline: "Quick Quiz",
-        prompt: "A table has 1,000 rows. Each row represents one purchase transaction. What is the grain?",
-        options: ["Customer", "Product", "Transaction", "Store"],
-        expected: "Transaction",
+        title: "Quick Quiz",
+        subtitle: "A table has 1,000 rows. Each row is one purchase transaction. What is the grain?",
+        badge: "Quiz",
+        badgeColor: "#6366f1",
+        badgeIcon: "Lightbulb",
+        options: [
+          { label: "Customer", value: "Customer", correct: false },
+          { label: "Product", value: "Product", correct: false },
+          { label: "Transaction", value: "Transaction", correct: true },
+          { label: "Store", value: "Store", correct: false },
+        ],
+        successMessage: "That's right!",
+        failureMessage: "Not quite — think about what one row represents.",
+        remediation: "Each row is a single purchase **transaction**. The grain tells you what one row means — if each row = one purchase, then the grain is 'transaction'.",
       },
       {
         id: "6",
-        type: "interactive",
-        headline: "COUNT vs COUNT DISTINCT",
-        subheadline: "Click the buttons to see each function in action!",
-        visual: { type: "count_demo" },
+        type: "concept",
+        title: "COUNT vs COUNT DISTINCT",
+        subtitle: "Watch the count build up",
+        body: "**COUNT(*)** counts every row. **COUNT(DISTINCT customer)** counts each person only once — duplicates are skipped.",
+        badge: "Key Difference",
+        badgeColor: "#10b981",
+        badgeIcon: "Hash",
+        visual: {
+          type: "count_demo",
+          people: SAMPLE_PEOPLE,
+        },
       },
       {
         id: "7",
-        type: "interactive",
-        headline: "SQL Playground",
-        subheadline: "Edit and run this query to see the results",
+        type: "checkpoint",
+        title: "SQL Playground",
+        body: "Try both queries below to see the difference. Start with `COUNT(*)`, then try `COUNT(DISTINCT customer)`.",
+        badge: "Hands-On",
+        badgeColor: "#6366f1",
+        badgeIcon: "Terminal",
         visual: {
           type: "sql_playground",
-          code: "SELECT\n  COUNT(*) as total_orders,\n  COUNT(DISTINCT customer_id) as unique_customers\nFROM orders\nWHERE order_date >= '2024-01-01';",
-          result: [["total_orders", "unique_customers"], ["1,247", "523"]],
+          orders: SAMPLE_ORDERS,
+          defaultQuery: "SELECT COUNT(*) FROM orders;",
+          hint: "After running COUNT(*), change it to COUNT(DISTINCT customer) and compare.",
         },
       },
       {
         id: "8",
-        type: "interactive",
-        headline: "Match the Concepts",
+        type: "checkpoint",
+        title: "Match the Concepts",
+        body: "Match each SQL concept on the left with its definition on the right.",
+        badge: "Practice",
+        badgeColor: "#eab308",
+        badgeIcon: "Zap",
         visual: {
           type: "matching",
           pairs: [
             { left: "COUNT(*)", right: "Counts all rows" },
-            { left: "COUNT DISTINCT", right: "Counts unique values only" },
+            { left: "COUNT(DISTINCT)", right: "Counts unique values only" },
             { left: "Grain", right: "What one row represents" },
             { left: "Inclusion rules", right: "Define what counts in a metric" },
           ],
+          shuffleRight: true,
         },
       },
       {
         id: "9",
-        type: "checkpoint",
-        headline: "Final Challenge",
-        prompt:
-          "You need to find how many DIFFERENT customers made purchases this month. Should you use COUNT(*) or COUNT(DISTINCT customer_id)?",
-        expected: "count distinct",
-        hint: "You want UNIQUE customers, not total rows. Which function removes duplicates?",
+        type: "quiz",
+        title: "Final Challenge",
+        subtitle: "You need to find how many DIFFERENT customers made purchases. Which should you use?",
+        badge: "Challenge",
+        badgeColor: "#f97316",
+        badgeIcon: "Award",
+        options: [
+          { label: "COUNT(*)", value: "count", correct: false },
+          { label: "COUNT(DISTINCT customer)", value: "count distinct", correct: true },
+        ],
+        successMessage: "Exactly! DISTINCT removes duplicates.",
+        failureMessage: "COUNT(*) counts all rows, including duplicates.",
+        remediation: "**COUNT(*)** gives you the total number of orders. But the question asks for **unique customers** — you need **COUNT(DISTINCT customer)** to skip duplicates.",
+        visual: {
+          type: "count_demo",
+          people: SAMPLE_PEOPLE,
+        },
       },
       {
         id: "10",
         type: "summary",
-        headline: "Lesson Complete!",
-        bullets: [
-          "Metrics need clear inclusion rules (what, when, where)",
-          "Grain tells you what one row represents",
-          "Use COUNT DISTINCT when you need unique values",
-          "Always check the grain before counting!",
+        title: "Lesson Complete!",
+        body: "You've built a solid foundation in data analytics. These concepts are the building blocks for everything that follows.",
+        checklist: [
+          { icon: "Eye", text: "Metrics need clear inclusion rules (what, when, where)" },
+          { icon: "Hash", text: "Grain tells you what one row represents" },
+          { icon: "Users", text: "Use COUNT DISTINCT when you need unique values" },
+          { icon: "Check", text: "Always check the grain before counting!" },
         ],
       },
     ],
   };
 }
+
+/* ═══════════════════════════════════════════════════════════
+   POST HANDLER
+   ═══════════════════════════════════════════════════════════ */
 
 export async function POST(req: Request) {
   const start = Date.now();
@@ -278,10 +670,10 @@ export async function POST(req: Request) {
         resume = text;
       } else {
         const file = form.get("resumeFile");
-        if (!(file instanceof File)) return NextResponse.json({ error: "no_file" }, { status: 400 });
-        if (!file.type.includes("pdf") && !file.name.toLowerCase().endsWith(".pdf")) {
+        if (!(file instanceof File))
+          return NextResponse.json({ error: "no_file" }, { status: 400 });
+        if (!file.type.includes("pdf") && !file.name.toLowerCase().endsWith(".pdf"))
           return NextResponse.json({ error: "pdf_only" }, { status: 400 });
-        }
         const bytes = await file.arrayBuffer();
         resume = await extractText({ projectId, auth, base64: Buffer.from(bytes).toString("base64") });
       }
@@ -294,23 +686,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "too_short", hint: "Upload PDF or paste more text" }, { status: 400 });
     }
 
-    let deck: any;
+    let lesson: Lesson;
     let usedFallback = false;
 
     try {
-      deck = await generate({ projectId, auth, resume });
-      deck = normalize(deck);
-      if (deck.slides.length < 5) throw new Error("Too few slides");
-    } catch (e: any) {
-      console.error("Gen failed:", e?.message || e);
-      deck = fallback();
+      const rawDeck = await generate({ projectId, auth, resume });
+      lesson = transformToLesson(rawDeck);
+      if (lesson.slides.length < 5) throw new Error("Too few slides after transform");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("Generation failed, using fallback:", msg);
+      lesson = fallbackLesson();
       usedFallback = true;
     }
 
-    console.log(`Done in ${Date.now() - start}ms, fallback=${usedFallback}`);
-    return NextResponse.json({ ...deck, _meta: { time: Date.now() - start, fallback: usedFallback } });
-  } catch (e: any) {
-    console.error("Error:", e);
-    return NextResponse.json({ error: "server_error", message: e?.message }, { status: 500 });
+    console.log(`Lesson generated in ${Date.now() - start}ms, fallback=${usedFallback}`);
+    return NextResponse.json(lesson);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("Route error:", msg);
+    return NextResponse.json({ error: "server_error", message: msg }, { status: 500 });
   }
 }
