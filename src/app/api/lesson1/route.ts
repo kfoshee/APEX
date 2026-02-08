@@ -45,17 +45,38 @@ function extractJson(text: string) {
 function parseDeckJson(raw: string) {
   const text = (raw || "").trim();
   if (!text) throw new Error("Empty");
-  try { return JSON.parse(text); } catch {}
-  try { return JSON.parse(extractJson(text)); } catch {}
-  try { return JSON.parse(jsonrepair(text)); } catch {}
-  try { return JSON.parse(jsonrepair(extractJson(text))); } catch {}
+  try {
+    return JSON.parse(text);
+  } catch { }
+  try {
+    return JSON.parse(extractJson(text));
+  } catch { }
+  try {
+    return JSON.parse(jsonrepair(text));
+  } catch { }
+  try {
+    return JSON.parse(jsonrepair(extractJson(text)));
+  } catch { }
   throw new Error("JSON parse failed");
 }
 
 async function getAuthHeaders() {
-  const { GCP_PROJECT_NUMBER, GCP_SERVICE_ACCOUNT_EMAIL, GCP_WORKLOAD_IDENTITY_POOL_ID, GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID } = process.env;
-  if (GCP_PROJECT_NUMBER && GCP_SERVICE_ACCOUNT_EMAIL && GCP_WORKLOAD_IDENTITY_POOL_ID && GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID) {
-    const client = ExternalAccountClient.fromJSON({
+  const {
+    GCP_PROJECT_NUMBER,
+    GCP_SERVICE_ACCOUNT_EMAIL,
+    GCP_WORKLOAD_IDENTITY_POOL_ID,
+    GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID,
+  } = process.env;
+
+  if (
+    GCP_PROJECT_NUMBER &&
+    GCP_SERVICE_ACCOUNT_EMAIL &&
+    GCP_WORKLOAD_IDENTITY_POOL_ID &&
+    GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID
+  ) {
+    // ExternalAccountClient.fromJSON has a nullable return type in the typings.
+    // Guard it so TS (and runtime) are both safe.
+    const maybeClient = ExternalAccountClient.fromJSON({
       type: "external_account",
       audience: `//iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID}`,
       subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
@@ -63,8 +84,11 @@ async function getAuthHeaders() {
       service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken`,
       subject_token_supplier: { getSubjectToken: getVercelOidcToken },
     });
-    return await client.getRequestHeaders();
+
+    if (!maybeClient) throw new Error("ExternalAccountClient.fromJSON returned null");
+    return await maybeClient.getRequestHeaders();
   }
+
   const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
   return await (await auth.getClient()).getRequestHeaders();
 }
@@ -113,7 +137,12 @@ async function generate(params: { projectId: string; auth: string; resume: strin
     method: "POST",
     headers: { Authorization: params.auth, "Content-Type": "application/json" },
     body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: `Context: ${params.resume.slice(0, 1500)}\n\nGenerate the lesson.` }] }],
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `Context: ${params.resume.slice(0, 1500)}\n\nGenerate the lesson.` }],
+        },
+      ],
       systemInstruction: { role: "system", parts: [{ text: SYSTEM }] },
       generationConfig: { temperature: 0.2, maxOutputTokens: 2500, responseMimeType: "application/json" },
     }),
@@ -144,7 +173,7 @@ function fallback() {
           "KEY: A metric is a number that measures something specific in your business",
           "Every metric needs inclusion rules: WHAT counts, WHEN it counts, WHERE it counts",
           "Example: 'Monthly Active Users' = users who logged in at least once this month",
-          "⚠ Without clear rules, different people will calculate different numbers!"
+          "⚠ Without clear rules, different people will calculate different numbers!",
         ],
       },
       {
@@ -162,7 +191,7 @@ function fallback() {
           "KEY: Grain = what ONE ROW represents in your dataset",
           "In an orders table: one row = one order",
           "In a customers table: one row = one customer",
-          "Understanding grain prevents double-counting mistakes"
+          "Understanding grain prevents double-counting mistakes",
         ],
       },
       {
@@ -209,7 +238,8 @@ function fallback() {
         id: "9",
         type: "checkpoint",
         headline: "Final Challenge",
-        prompt: "You need to find how many DIFFERENT customers made purchases this month. Should you use COUNT(*) or COUNT(DISTINCT customer_id)?",
+        prompt:
+          "You need to find how many DIFFERENT customers made purchases this month. Should you use COUNT(*) or COUNT(DISTINCT customer_id)?",
         expected: "count distinct",
         hint: "You want UNIQUE customers, not total rows. Which function removes duplicates?",
       },
@@ -221,9 +251,9 @@ function fallback() {
           "Metrics need clear inclusion rules (what, when, where)",
           "Grain tells you what one row represents",
           "Use COUNT DISTINCT when you need unique values",
-          "Always check the grain before counting!"
+          "Always check the grain before counting!",
         ],
-      }
+      },
     ],
   };
 }
@@ -264,7 +294,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "too_short", hint: "Upload PDF or paste more text" }, { status: 400 });
     }
 
-    let deck;
+    let deck: any;
     let usedFallback = false;
 
     try {
@@ -272,14 +302,13 @@ export async function POST(req: Request) {
       deck = normalize(deck);
       if (deck.slides.length < 5) throw new Error("Too few slides");
     } catch (e: any) {
-      console.error("Gen failed:", e.message);
+      console.error("Gen failed:", e?.message || e);
       deck = fallback();
       usedFallback = true;
     }
 
     console.log(`Done in ${Date.now() - start}ms, fallback=${usedFallback}`);
     return NextResponse.json({ ...deck, _meta: { time: Date.now() - start, fallback: usedFallback } });
-
   } catch (e: any) {
     console.error("Error:", e);
     return NextResponse.json({ error: "server_error", message: e?.message }, { status: 500 });
