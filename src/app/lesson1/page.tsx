@@ -2,11 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  ChevronRight, ChevronLeft, Check, X, Play, RotateCcw, Database, Sparkles,
-  AlertTriangle, DollarSign, Users, Hash, Coffee, ShoppingBag, TrendingUp,
-  Lightbulb, Award, Zap, ArrowDown, Eye,
-} from "lucide-react";
+import { ChevronRight, ChevronLeft, Check, X, Play, RotateCcw, Database, Sparkles, AlertTriangle, DollarSign, Users, Hash, Coffee, ShoppingBag, TrendingUp, Lightbulb, Award, Zap, ArrowDown, Eye } from "lucide-react";
 
 const ACCENT = "#6366f1";
 const ACCENT_GRAD = "linear-gradient(135deg, #6366f1 0%, #818cf8 100%)";
@@ -39,8 +35,8 @@ function AnimatedNumber({ value, color }: { value: number; color: string }) {
 }
 
 // Customer avatar
-function Avatar({ name, color, size = 48, active, excluded, count }: { 
-  name: string; color: string; size?: number; active?: boolean; excluded?: boolean; count?: number 
+function Avatar({ name, color, size = 48, active, excluded, count }: {
+  name: string; color: string; size?: number; active?: boolean; excluded?: boolean; count?: number
 }) {
   const initials = name.split(' ').map(n => n[0]).join('');
   return (
@@ -101,8 +97,10 @@ function SlideHook() {
           <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ padding: 60 }}>
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              style={{ width: 40, height: 40, borderRadius: "50%", border: "3px solid transparent",
-                borderTopColor: ACCENT, margin: "0 auto" }} />
+              style={{
+                width: 40, height: 40, borderRadius: "50%", border: "3px solid transparent",
+                borderTopColor: ACCENT, margin: "0 auto"
+              }} />
           </motion.div>
         )}
 
@@ -366,21 +364,20 @@ function SlideTrap({ onComplete }: { onComplete: () => void }) {
               onClick={() => choice === null && handleChoice(opt.value)}
               style={{
                 flex: 1, padding: "28px 20px", borderRadius: 16,
-                background: choice === opt.value 
+                background: choice === opt.value
                   ? (revealed ? (opt.value === 3 ? `${SUCCESS}20` : `${ERROR}20`) : `${ACCENT}20`)
                   : SURFACE,
-                border: `2px solid ${
-                  choice === opt.value 
+                border: `2px solid ${choice === opt.value
                     ? (revealed ? (opt.value === 3 ? SUCCESS : ERROR) : ACCENT)
                     : BORDER
-                }`,
+                  }`,
                 cursor: choice === null ? "pointer" : "default",
                 textAlign: "center",
               }}
             >
               <div style={{
                 fontSize: 48, fontWeight: 800, marginBottom: 8,
-                color: choice === opt.value 
+                color: choice === opt.value
                   ? (revealed ? (opt.value === 3 ? SUCCESS : ERROR) : ACCENT)
                   : "white",
               }}>{opt.value}</div>
@@ -402,7 +399,7 @@ function SlideTrap({ onComplete }: { onComplete: () => void }) {
                   <span style={{ color: ERROR, fontWeight: 700, fontSize: 18 }}>That's the trap!</span>
                 </div>
                 <p style={{ color: "#fca5a5", fontSize: 15, margin: 0, lineHeight: 1.6 }}>
-                  You counted <strong>orders</strong>, not <strong>customers</strong>. 
+                  You counted <strong>orders</strong>, not <strong>customers</strong>.
                   Emma and James each ordered twice—they're not 4 different people!
                 </p>
               </div>
@@ -819,7 +816,7 @@ export default function Lesson1Page() {
       else form.append("resumeText", text);
       await fetch("/api/lesson1", { method: "POST", body: form });
       setStarted(true);
-    } catch (e) {}
+    } catch (e) { }
     finally { setLoading(false); }
   };
 
