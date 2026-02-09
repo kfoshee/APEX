@@ -413,7 +413,7 @@ function Avatar({ name, color, size = 48, active, excluded, count }: { name: str
   return (
     <motion.div animate={{ scale: active ? 1.1 : 1, opacity: excluded ? 0.3 : 1, y: active ? -8 : 0 }}
       style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, position: "relative" }}>
-      <div aria-label={`${name}${excluded ? " (skipped)" : ""}${count ? ` – ${count} orders` : ""}`}
+      <div aria-label={`${name}${excluded ? " (skipped)" : ""}${count ? ` – ${count} billing events` : ""}`}
         style={{
           width: size, height: size, borderRadius: size / 3,
           background: excluded ? `${T.error}30` : active ? `${color}30` : "rgba(255,255,255,0.05)",
@@ -483,7 +483,7 @@ function VisualLiveTable({ visual, onComplete }: { visual: z.infer<typeof LiveTa
     <div>
       <div role="region" aria-label="Customer avatars" style={{ display: "flex", justifyContent: "center", gap: 24, padding: "24px 16px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, marginBottom: 16 }}>
         {unique.length === 0
-          ? <div style={{ color: T.textDim, fontSize: 14, padding: 20 }}>Customers will appear here…</div>
+          ? <div style={{ color: T.textDim, fontSize: 14, padding: 20 }}>Subscribers will appear as billing events arrive…</div>
           : unique.map((name) => {
             const o = orders.find((x) => x.customer === name);
             const ct = visible.filter((x) => x.customer === name).length;
@@ -491,9 +491,9 @@ function VisualLiveTable({ visual, onComplete }: { visual: z.infer<typeof LiveTa
           })}
       </div>
 
-      <div role="table" aria-label="Orders" style={{ background: "#0c0c0f", border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 24, minHeight: 180 }}>
+      <div role="table" aria-label="Subscriptions" style={{ background: "#0c0c0f", border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 24, minHeight: 180 }}>
         <div role="row" style={{ display: "grid", gridTemplateColumns: "60px 1fr 1.2fr 80px", borderBottom: `1px solid ${T.border}` }}>
-          {["#", "Customer", "Item", "Price"].map((h) => (
+          {["#", "Customer", "Plan", "Amount"].map((h) => (
             <div key={h} role="columnheader" style={{ padding: "10px 12px", fontSize: 11, fontWeight: 600, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
           ))}
         </div>
@@ -514,21 +514,21 @@ function VisualLiveTable({ visual, onComplete }: { visual: z.infer<typeof LiveTa
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: "flex", gap: 16, marginBottom: 24 }}>
           <div style={{ flex: 1, padding: 16, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, textAlign: "center" }}>
             <div style={{ fontSize: 36, fontWeight: 700, color: "white" }}>{step}</div>
-            <div style={{ fontSize: 12, color: T.textMuted }}>orders</div>
+            <div style={{ fontSize: 12, color: T.textMuted }}>billing rows</div>
           </div>
           <div style={{ flex: 1, padding: 16, background: `${T.success}10`, border: `1px solid ${T.success}30`, borderRadius: 12, textAlign: "center" }}>
             <div style={{ fontSize: 36, fontWeight: 700, color: T.success }}>{unique.length}</div>
-            <div style={{ fontSize: 12, color: T.textMuted }}>unique people</div>
+            <div style={{ fontSize: 12, color: T.textMuted }}>unique subscribers</div>
           </div>
         </motion.div>
       )}
 
-      {!running && <PrimaryBtn onClick={start} full label="Play order animation"><Play size={20} fill="white" /> Watch Orders</PrimaryBtn>}
+      {!running && <PrimaryBtn onClick={start} full label="Play billing event animation"><Play size={20} fill="white" /> Stream Billing Events</PrimaryBtn>}
 
       {step >= orders.length && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: "16px 20px", background: `${T.yellow}10`, border: `1px solid ${T.yellow}30`, borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
           <Lightbulb size={22} color={T.yellow} />
-          <span style={{ color: "#fef08a", fontSize: 15 }}>Notice: <strong>{orders.length} orders</strong>, but only <strong>{unique.length} different people</strong></span>
+          <span style={{ color: "#fef08a", fontSize: 15 }}><strong>{orders.length} billing rows</strong> but only <strong>{unique.length} subscribers</strong> — if you COUNT(*), you'd overcount by {orders.length - unique.length}</span>
         </motion.div>
       )}
     </div>
@@ -570,7 +570,7 @@ function VisualCountDemo({ visual, onComplete }: { visual: z.infer<typeof CountD
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
           <div aria-live="polite" style={{ padding: "24px 56px", background: `${T.success}15`, border: `2px solid ${T.success}`, borderRadius: 20, textAlign: "center" }}>
             <motion.div key={result} initial={{ scale: 1.3 }} animate={{ scale: 1 }} style={{ fontSize: 64, fontWeight: 800, color: T.success }}>{result}</motion.div>
-            <div style={{ color: "#6ee7b7", fontSize: 14 }}>unique customers</div>
+            <div style={{ color: "#6ee7b7", fontSize: 14 }}>unique subscribers</div>
           </div>
         </motion.div>
       )}
@@ -586,7 +586,7 @@ function VisualCountDemo({ visual, onComplete }: { visual: z.infer<typeof CountD
 
       {mode === "done" && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: "16px 20px", background: `${T.success}10`, border: `1px solid ${T.success}30`, borderRadius: 12, textAlign: "center", color: "#6ee7b7", fontSize: 15 }}>
-          Duplicates were each counted only <strong>once</strong>.
+          Duplicates skipped — that's the right subscriber count for your manager.
         </motion.div>
       )}
     </div>
@@ -647,7 +647,7 @@ function VisualMatching({ visual, onComplete }: { visual: z.infer<typeof Matchin
       </div>
       {done && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 20, padding: "16px 20px", background: `${T.success}10`, border: `1px solid ${T.success}30`, borderRadius: 12, textAlign: "center", color: "#6ee7b7", fontSize: 15 }}>
-          <Check size={16} style={{ marginRight: 6, verticalAlign: "middle" }} /> All matched correctly!
+          <Check size={16} style={{ marginRight: 6, verticalAlign: "middle" }} /> All matched — these terms are locked in.
         </motion.div>
       )}
     </div>
@@ -664,20 +664,20 @@ type SqlResult = SqlOk | SqlErr;
 
 function executeSafeSQL(raw: string, orders: OrderRow[]): SqlResult {
   const sql = raw.trim().replace(/;$/, "").replace(/\s+/g, " ").toLowerCase();
-  if (/^select\s+count\(\s*\*\s*\)\s+from\s+orders$/.test(sql))
-    return { ok: true, columns: ["count"], rows: [[orders.length]], explanation: `COUNT(*) counted every row — all ${orders.length} orders, including repeat customers.` };
-  if (/^select\s+count\(\s*distinct\s+customer\s*\)\s+from\s+orders$/.test(sql)) {
+  if (/^select\s+count\(\s*\*\s*\)\s+from\s+(orders|subscriptions)$/.test(sql))
+    return { ok: true, columns: ["count"], rows: [[orders.length]], explanation: `COUNT(*) returned ${orders.length} — that's every billing row, including repeat customers. Not the subscriber count your manager wants.` };
+  if (/^select\s+count\(\s*distinct\s+customer\s*\)\s+from\s+(orders|subscriptions)$/.test(sql)) {
     const u = new Set(orders.map((o) => o.customer));
-    return { ok: true, columns: ["count"], rows: [[u.size]], explanation: `COUNT(DISTINCT customer) found ${u.size} unique people, ignoring ${orders.length - u.size} duplicate rows.` };
+    return { ok: true, columns: ["count"], rows: [[u.size]], explanation: `COUNT(DISTINCT customer) returned ${u.size} unique subscribers. That's ${orders.length - u.size} fewer than COUNT(*) because duplicates like Alice (3 rows) are counted once.` };
   }
-  if (/customer_id/.test(sql)) return { ok: false, error: "Column not found: customer_id", hint: 'The column is called "customer", not "customer_id". Try: SELECT COUNT(DISTINCT customer) FROM orders' };
-  if (/select\s+\*/.test(sql)) return { ok: false, error: "SELECT * is not supported here.", hint: "Try COUNT(*) or COUNT(DISTINCT customer) instead." };
-  return { ok: false, error: "Query not supported in this sandbox.", hint: "Try:\n• SELECT COUNT(*) FROM orders\n• SELECT COUNT(DISTINCT customer) FROM orders" };
+  if (/customer_id/.test(sql)) return { ok: false, error: "Column not found: customer_id", hint: 'The column is called "customer", not "customer_id". Try: SELECT COUNT(DISTINCT customer) FROM subscriptions' };
+  if (/select\s+\*/.test(sql)) return { ok: false, error: "SELECT * is not supported in this sandbox.", hint: "Try COUNT(*) or COUNT(DISTINCT customer) to answer the manager's question." };
+  return { ok: false, error: "Query not recognized in this sandbox.", hint: "Try one of these:\n• SELECT COUNT(*) FROM subscriptions\n• SELECT COUNT(DISTINCT customer) FROM subscriptions" };
 }
 
 const SQL_PRESETS = [
-  { label: "COUNT(*)", query: "SELECT COUNT(*) FROM orders;" },
-  { label: "COUNT(DISTINCT)", query: "SELECT COUNT(DISTINCT customer) FROM orders;" },
+  { label: "COUNT(*)", query: "SELECT COUNT(*) FROM subscriptions;" },
+  { label: "COUNT(DISTINCT)", query: "SELECT COUNT(DISTINCT customer) FROM subscriptions;" },
 ];
 
 function VisualSqlPlayground({ visual, onComplete }: { visual: z.infer<typeof SqlPlaygroundVisualSchema>; onComplete?: () => void }) {
@@ -704,10 +704,10 @@ function VisualSqlPlayground({ visual, onComplete }: { visual: z.infer<typeof Sq
       {/* Data preview */}
       <div style={{ marginBottom: 16, padding: 16, background: "#0c0c0f", border: `1px solid ${T.border}`, borderRadius: 12, overflow: "auto", maxHeight: 180 }}>
         <div style={{ fontSize: 11, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
-          <Database size={12} style={{ marginRight: 6, verticalAlign: "middle" }} /> orders table ({orders.length} rows)
+          <Database size={12} style={{ marginRight: 6, verticalAlign: "middle" }} /> subscriptions table ({orders.length} rows)
         </div>
         <table role="table" aria-label="Sample data" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-          <thead><tr>{["id", "customer", "item", "price"].map((h) => <th key={h} style={{ textAlign: "left", padding: "4px 8px", color: T.textMuted, fontWeight: 600, borderBottom: `1px solid ${T.border}`, fontSize: 11, textTransform: "uppercase" }}>{h}</th>)}</tr></thead>
+          <thead><tr>{["id", "customer", "plan", "amount"].map((h) => <th key={h} style={{ textAlign: "left", padding: "4px 8px", color: T.textMuted, fontWeight: 600, borderBottom: `1px solid ${T.border}`, fontSize: 11, textTransform: "uppercase" }}>{h}</th>)}</tr></thead>
           <tbody>{orders.map((o) => (
             <tr key={o.id}>
               <td style={{ padding: "4px 8px", color: T.textMuted, fontFamily: "monospace" }}>{o.id}</td>
@@ -721,7 +721,7 @@ function VisualSqlPlayground({ visual, onComplete }: { visual: z.infer<typeof Sq
 
       {/* Presets */}
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12, color: T.textDim, lineHeight: "28px" }}>Presets:</span>
+        <span style={{ fontSize: 12, color: T.textDim, lineHeight: "28px" }}>Quick start:</span>
         {SQL_PRESETS.map((p) => (
           <button key={p.label} aria-label={`Use preset: ${p.label}`} onClick={() => { setQuery(p.query); setResult(null); taRef.current?.focus(); }}
             style={{ padding: "4px 12px", borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.accent, fontSize: 12, fontFamily: T.mono, cursor: "pointer" }}>{p.label}</button>
@@ -835,7 +835,7 @@ function SlideConcept({ slide, onComplete }: { slide: Slide; onComplete?: () => 
         {slide.title && <h2 style={{ fontSize: 28, fontWeight: 700, color: "white", marginBottom: 16, lineHeight: 1.3 }}>{renderSafe(slide.title)}</h2>}
         {slide.body && <p style={{ color: T.textSecondary, fontSize: 17, lineHeight: 1.8, marginBottom: 28 }}>{renderSafe(slide.body)}</p>}
       </motion.div>
-      {slide.visual && !expanded && <PrimaryBtn onClick={() => setExpanded(true)}>{slide.subtitle ?? "Show me"} <ChevronRight size={18} /></PrimaryBtn>}
+      {slide.visual && !expanded && <PrimaryBtn onClick={() => setExpanded(true)}>{slide.subtitle ?? "See the data"} <ChevronRight size={18} /></PrimaryBtn>}
       {slide.visual && expanded && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}><VisualRenderer visual={slide.visual} onComplete={onComplete} /></motion.div>}
     </div>
   );
@@ -917,9 +917,9 @@ function SlideSummary({ slide, stats }: { slide: Slide; stats: { streak: number;
       {/* Stats row */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} style={{ display: "flex", gap: 12, marginBottom: 28, justifyContent: "center" }}>
         {[
-          { icon: Clock, value: fmtTime(stats.elapsedSec), label: "Time", color: T.blue },
+          { icon: Clock, value: fmtTime(stats.elapsedSec), label: "Total time", color: T.blue },
           { icon: Flame, value: String(stats.maxStreak), label: "Best streak", color: T.orange },
-          { icon: Trophy, value: totalQ > 0 ? `${firstTry}/${totalQ}` : "—", label: "First try", color: T.success },
+          { icon: Trophy, value: totalQ > 0 ? `${firstTry}/${totalQ}` : "—", label: "Nailed first try", color: T.success },
         ].map((s, i) => (
           <div key={i} style={{ flex: 1, padding: "14px 8px", background: `${s.color}10`, border: `1px solid ${s.color}25`, borderRadius: 12, textAlign: "center" }}>
             <s.icon size={16} color={s.color} style={{ marginBottom: 6 }} />
@@ -932,7 +932,7 @@ function SlideSummary({ slide, stats }: { slide: Slide; stats: { streak: number;
       {items.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
           style={{ padding: 28, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, textAlign: "left" }}>
-          <div style={{ color: T.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 20 }}>Your new mental checklist</div>
+          <div style={{ color: T.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 20 }}>What you'll take to the job</div>
           {items.map((item, i) => {
             const Icon = resolveIcon(item.icon, Check);
             return (
@@ -954,7 +954,7 @@ function SlideSummary({ slide, stats }: { slide: Slide; stats: { streak: number;
    ═══════════════════════════════════════════════════════════ */
 
 function RemediationOverlay({ slide, onDismiss }: { slide: Slide; onDismiss: () => void }) {
-  const hint = slide.remediation ?? "Let's review. Think about what one row in this table represents, then try again.";
+  const hint = slide.remediation ?? "Let's break this down. Think about what one row in this table actually represents — that's the key to getting the right count.";
   useEffect(() => { trackEvent("remediation_shown", { slideId: slide.id }); }, [slide.id]);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -964,13 +964,13 @@ function RemediationOverlay({ slide, onDismiss }: { slide: Slide; onDismiss: () 
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, background: `${T.orange}20`, display: "flex", alignItems: "center", justifyContent: "center" }}><RefreshCw size={22} color={T.orange} /></div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "white" }}>Not quite — let's review</div>
-            <div style={{ fontSize: 13, color: T.textMuted }}>Everyone misses sometimes</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "white" }}>Here's where that breaks down</div>
+            <div style={{ fontSize: 13, color: T.textMuted }}>This is a common mistake — let's fix the thinking</div>
           </div>
         </div>
         <p style={{ color: T.textSecondary, fontSize: 15, lineHeight: 1.7, marginBottom: 24 }}>{renderSafe(hint)}</p>
         {slide.visual && <div style={{ marginBottom: 24 }}><VisualRenderer visual={slide.visual} /></div>}
-        <PrimaryBtn onClick={onDismiss} full label="Continue after review">Got it — continue <ArrowRight size={18} /></PrimaryBtn>
+        <PrimaryBtn onClick={onDismiss} full label="Continue after review">Got it — try again <ArrowRight size={18} /></PrimaryBtn>
       </motion.div>
     </motion.div>
   );
@@ -1061,14 +1061,14 @@ export default function Lesson1Page() {
         <div style={{ maxWidth: 380, padding: 24 }}>
           <div style={{ marginBottom: 32 }}>
             <div style={{ width: 56, height: 56, borderRadius: 14, background: T.accentGrad, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}><Database size={26} color="white" /></div>
-            <h1 style={{ fontSize: 26, fontWeight: 600, color: "white", marginBottom: 8 }}>Data Foundations</h1>
-            <p style={{ color: T.textMuted, fontSize: 15 }}>Interactive lesson · 3 min</p>
+            <h1 style={{ fontSize: 26, fontWeight: 600, color: "white", marginBottom: 8 }}>Your First Analyst Task</h1>
+            <p style={{ color: T.textMuted, fontSize: 15 }}>Answer a real manager question · Earn the Data Foundations badge · 4 min</p>
           </div>
 
           {cacheStale && (
             <div role="alert" style={{ padding: 16, background: `${T.orange}10`, border: `1px solid ${T.orange}40`, borderRadius: 12, marginBottom: 20, fontSize: 14, color: "#fdba74" }}>
               <RefreshCw size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
-              Your cached lesson was outdated and has been cleared. Generate a fresh one below.
+              Your saved progress was from an older version and has been cleared. Start fresh below.
             </div>
           )}
           {error && (
@@ -1078,9 +1078,10 @@ export default function Lesson1Page() {
           )}
 
           {phase === "loading" ? (
-            <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: 40, gap: 16 }}>
               <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid transparent", borderTopColor: T.accent }} />
+              <p style={{ color: T.textMuted, fontSize: 14 }}>Building your NovaCast scenario…</p>
             </div>
           ) : (
             <>
@@ -1097,7 +1098,7 @@ export default function Lesson1Page() {
                 style={{ width: "100%", minHeight: 80, padding: 14, borderRadius: 10, border: `1px solid ${T.border}`, background: "rgba(255,255,255,0.02)", color: "white", fontSize: 14, resize: "none", outline: "none", marginBottom: 20, fontFamily: T.font, boxSizing: "border-box" }} />
               <button onClick={start} disabled={!file && text.length < 50} aria-label="Start lesson"
                 style={{ width: "100%", padding: "14px 20px", borderRadius: 10, border: "none", background: file || text.length >= 50 ? T.accentGrad : "rgba(255,255,255,0.1)", color: "white", fontSize: 15, fontWeight: 500, cursor: file || text.length >= 50 ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <Sparkles size={18} /> Start Lesson
+                <Sparkles size={18} /> Build My Lesson
               </button>
             </>
           )}
@@ -1109,16 +1110,19 @@ export default function Lesson1Page() {
   /* ═══════ RENDER: Complete ═══════ */
   if (phase === "complete" && lesson) {
     const sumSlide = lesson.slides.find((s) => s.type === "summary") ?? {
-      id: "done", type: "summary" as const, title: "Lesson Complete!", body: "Great work — you've built a data analytics foundation.",
-      checklist: [{ icon: "Eye", text: "Check the grain first" }, { icon: "Hash", text: "COUNT(*) = all rows" }, { icon: "Users", text: "COUNT(DISTINCT) = unique values" }],
+      id: "done", type: "summary" as const, title: "Badge Earned: Data Foundations", body: "You can define a metric, check the grain, and write the right COUNT. Ready for Lesson 2.",
+      checklist: [{ icon: "Eye", text: "Every metric needs WHO / WHEN / WHERE / exclusions" }, { icon: "Hash", text: "Check the grain — one row ≠ one customer" }, { icon: "Users", text: "COUNT(DISTINCT) for unique values" }],
     };
     return (
       <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.font, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div style={{ maxWidth: 500 }}>
           <SlideSummary slide={sumSlide} stats={{ streak, maxStreak, elapsedSec, results: slideResults }} />
-          <div style={{ marginTop: 32, display: "flex", justifyContent: "center" }}>
+          <div style={{ marginTop: 24, display: "flex", gap: 12, justifyContent: "center" }}>
             <button onClick={restart} aria-label="Restart lesson" style={{ padding: "12px 24px", borderRadius: 10, border: `1px solid ${T.border}`, background: "transparent", color: T.textSecondary, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
-              <RotateCcw size={16} /> Restart Lesson
+              <RotateCcw size={16} /> Redo Lesson
+            </button>
+            <button disabled aria-label="Lesson 2 coming soon" style={{ padding: "12px 24px", borderRadius: 10, border: "none", background: `${T.accent}25`, color: T.accent, fontSize: 14, fontWeight: 500, cursor: "not-allowed", display: "flex", alignItems: "center", gap: 8, opacity: 0.7 }}>
+              Lesson 2: Aggregation <ArrowRight size={16} />
             </button>
           </div>
         </div>
@@ -1163,7 +1167,7 @@ export default function Lesson1Page() {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ color: T.textDim, fontSize: 12, fontFamily: "monospace", display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} /> {fmtTime(elapsedSec)}</span>
               <span style={{ color: T.textMuted, fontSize: 13 }}>{slideIdx + 1}/{lesson.slides.length}</span>
-              <button onClick={restart} title="Restart" aria-label="Restart lesson" style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: T.textMuted, display: "flex", alignItems: "center" }}><RotateCcw size={14} /></button>
+              <button onClick={restart} title="Start over" aria-label="Restart lesson" style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: T.textMuted, display: "flex", alignItems: "center" }}><RotateCcw size={14} /></button>
             </div>
           </div>
           <div role="progressbar" aria-valuenow={slideIdx + 1} aria-valuemin={1} aria-valuemax={lesson.slides.length} aria-label={`Slide ${slideIdx + 1} of ${lesson.slides.length}`}
@@ -1189,7 +1193,7 @@ export default function Lesson1Page() {
           </button>
           <button onClick={isLast ? () => dispatch({ type: "NEXT_SLIDE" }) : next} aria-label={isLast ? "Complete lesson" : "Next slide"}
             style={{ flex: 1, height: 48, borderRadius: 10, border: "none", background: T.accentGrad, color: "white", fontSize: 15, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            {isLast ? <><span>Finish</span> <Trophy size={16} /></> : <><span>Continue</span> <ChevronRight size={18} /></>}
+            {isLast ? <><span>Claim Badge</span> <Trophy size={16} /></> : <><span>Next</span> <ChevronRight size={18} /></>}
           </button>
         </div>
       </footer>
