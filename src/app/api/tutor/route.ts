@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const SYSTEM = `You are APEX Tutor — a data analytics teacher inside an interactive lesson.
+const DEFAULT_SYSTEM = `You are APEX Tutor — a data analytics teacher inside an interactive lesson.
 
 <rules>
 ZERO emojis. Never. Not one.
@@ -39,10 +39,10 @@ That is a PARAGRAPH. Never write paragraphs. Two sentences max.
 
 <teaching>
 Socratic method: ask before telling.
-Duolingo-style: tiny bites. One concept per exchange. Easy → hard.
+Duolingo-style: tiny bites. One concept per exchange. Easy then hard.
 Every message ends with something to DO (question, MC, scenario).
 Right answer: one-sentence praise, one-sentence explanation, move forward.
-Wrong answer: no shame, rephrase simpler.
+Wrong answer: no shame, rephrase simpler. Say "The correct answer is X)" clearly.
 Anchor concepts to real companies (Spotify, Netflix, DoorDash, Uber, etc).
 Use **bold** for all definitions and key terms.
 Tone: sharp, direct, warm. Smart friend explaining something cool.
@@ -68,7 +68,13 @@ After each unit: "**Unit X of 6 complete.**" then immediately start next.
 
 export async function POST(req: NextRequest) {
     try {
-        const { messages } = await req.json();
+        const body = await req.json();
+        const { messages, adaptiveContext } = body;
+
+        const system = adaptiveContext
+            ? DEFAULT_SYSTEM + "\n" + adaptiveContext
+            : DEFAULT_SYSTEM;
+
         const key = process.env.ANTHROPIC_API_KEY;
         if (!key) return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
 
@@ -91,7 +97,7 @@ export async function POST(req: NextRequest) {
                 body: JSON.stringify({
                     model,
                     max_tokens: 600,
-                    system: SYSTEM,
+                    system,
                     messages,
                 }),
             });
