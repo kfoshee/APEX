@@ -1,688 +1,319 @@
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+import { NextRequest, NextResponse } from "next/server";
 
-import { NextResponse } from "next/server";
-import { ExternalAccountClient, GoogleAuth } from "google-auth-library";
-import { getVercelOidcToken } from "@vercel/oidc";
-import { jsonrepair } from "jsonrepair";
+// ============================================================
+// APEX AI TUTOR — API Route
+// Place at: src/app/api/tutor/route.ts
+// ============================================================
 
-/* ═══════════════════════════════════════════════════════════
-   CONFIG
-   ═══════════════════════════════════════════════════════════ */
+const SYSTEM_PROMPT = `
+<role>
+You are the APEX Tutor — a sharp, warm AI instructor for the APEX Data
+Analytics program. You teach by doing, not lecturing. You're the kind of
+teacher who makes people say "wait, I actually understand this now."
+</role>
 
-const LOCATION = process.env.GCP_LOCATION || "us-central1";
-const MODEL = process.env.VERTEX_MODEL || "gemini-2.5-flash";
-const DOCAI_LOCATION = process.env.DOCAI_LOCATION || "us";
-const DOCAI_PROCESSOR_ID = process.env.DOCAI_PROCESSOR_ID || "776c52b2d795c6e3";
+<first_message>
+Your very first response to "Start Lesson 1.1" must hook immediately.
+Do NOT open with a greeting, introduction, or calibration question.
+Instead, open with a vivid real-company scenario that makes data feel
+urgent and exciting, then immediately ask a gut-feel question.
 
-/* ═══════════════════════════════════════════════════════════
-   TYPES — matches the page's Zod schema exactly
-   ═══════════════════════════════════════════════════════════ */
+Here is the opener you should use (adapt naturally, don't copy verbatim):
 
-interface OrderRow {
-  id: number;
-  customer: string;
-  color?: string;
-  item: string;
-  price: string;
-}
+Open with a short, punchy hook about a real company making a massive
+decision using data. Something like Netflix greenlighting a $200M show,
+or Spotify building Discover Weekly, or DoorDash figuring out driver pay.
+Make it feel like a story, not a lesson.
 
-interface QuizOption {
-  label: string;
-  value: string | number;
-  correct?: boolean;
-}
+Then immediately ask a low-stakes multiple choice question related to that
+story. The question should be something ANYONE can answer — it's about
+building confidence and curiosity, not testing knowledge.
 
-interface MatchingPair {
-  left: string;
-  right: string;
-}
+Example vibe (don't use this exact text, create your own):
+"Netflix spent $200 million on Squid Game Season 2 before filming a
+single scene. No focus groups. No test audiences. Just data.
 
-interface Visual {
-  type: "live_table" | "count_demo" | "matching" | "sql_playground";
-  orders?: OrderRow[];
-  revealSpeed?: number;
-  people?: { name: string; color: string }[];
-  pairs?: MatchingPair[];
-  shuffleRight?: boolean;
-  defaultQuery?: string;
-  hint?: string;
-}
+Someone at Netflix looked at the numbers and said 'this will work.'
+That person? A data analyst.
 
-interface Slide {
-  id: string;
-  type: "intro" | "concept" | "quiz" | "checkpoint" | "summary";
-  title?: string;
-  subtitle?: string;
-  body?: string;
-  badge?: string;
-  badgeColor?: string;
-  badgeIcon?: string;
-  visual?: Visual;
-  options?: QuizOption[];
-  checklist?: { icon?: string; text: string }[];
-  phases?: { content: string; delay?: number }[];
-  autoAdvance?: boolean;
-  successMessage?: string;
-  failureMessage?: string;
-  remediation?: string;
-}
+Quick gut check — what data do you think Netflix looked at before
+betting $200M?
 
-interface Lesson {
-  id: string;
-  title: string;
-  description?: string;
-  estimatedMinutes?: number;
-  slides: Slide[];
-}
+A) What shows people binge vs. abandon after one episode
+B) Which genres are trending in each country
+C) How many people rewatched the original Squid Game
+D) All of the above"
 
-/* ═══════════════════════════════════════════════════════════
-   GEMINI SYSTEM PROMPT
-   ═══════════════════════════════════════════════════════════ */
+The answer is D, and when they answer, celebrate briefly and use it
+to define what data is. This is Unit 1.
+</first_message>
 
-const SYSTEM = `You are creating an interactive data analytics lesson for APEX, a platform that trains analysts through real business problems. Return ONLY valid JSON.
+<teaching_method>
+SOCRATIC-DUOLINGO HYBRID:
 
-SCENARIO: The learner is a junior analyst at "NovaCast," a podcast streaming subscription service. Their manager just asked: "How many paying subscribers did we have last month?" The lesson teaches them to answer that question correctly — defining the metric with explicit inclusion rules, understanding the data grain so they don't double-count, and writing the SQL.
+SOCRATIC: Ask before telling. Guide them to discover. When they reason
+correctly, they own it forever.
 
-LESSON OUTCOME: Earn the "Data Foundations" badge and unlock Lesson 2 (Aggregation & Grouping).
+DUOLINGO: Tiny bites. One concept, one question. Easy → hard. Constant
+interaction. End every unit on a win.
+</teaching_method>
 
-Create exactly this structure with 10 slides:
-{
-  "theme": "Data Foundations",
-  "title": "Lesson 1: Data Foundations",
-  "slides": [
-    { "id": "1", "type": "intro", "headline": "Your First Analyst Task", "subheadline": "Your manager needs last month's paying subscriber count by end of day", "bullets": ["Define a metric with inclusion rules", "Read the data grain so you don't double-count", "Write the SQL to get the right number"] },
-    { "id": "2", "type": "concept", "headline": "Metrics Need Rules", "bullets": ["KEY: A metric without rules is just a guess", "WHO counts: only users on a paid plan (exclude free-trial and churned)", "WHEN: subscription active at any point during last calendar month", "WHERE: all regions, but exclude internal test accounts", "⚠ Without these rules, your subscriber count could be off by thousands"] },
-    { "id": "3", "type": "interactive", "headline": "The Subscriptions Table", "subheadline": "Hit play — watch real subscription events stream in", "visual": { "type": "live_table" } },
-    { "id": "4", "type": "concept", "headline": "Grain: Why One Row Matters", "bullets": ["KEY: Grain = what one row represents", "The subscriptions table has one row per billing event, NOT one row per customer", "Alice has 3 rows because she was billed 3 times — if you COUNT(*) you get 6 total rows, not 3 customers", "⚠ Wrong grain assumption = double-counted subscribers in your report"] },
-    { "id": "5", "type": "quiz", "headline": "Spot the Grain", "prompt": "NovaCast's subscriptions table has one row per monthly billing event. A customer billed 3 months has 3 rows. What is the grain?", "options": ["Customer", "Subscription plan", "Billing event", "Calendar month"], "expected": "Billing event", "hint": "Each row is one billing event — not one customer" },
-    { "id": "6", "type": "interactive", "headline": "COUNT(*) vs COUNT(DISTINCT)", "subheadline": "See why the wrong COUNT inflates your number", "visual": { "type": "count_demo" } },
-    { "id": "7", "type": "interactive", "headline": "Write the Query", "subheadline": "Get NovaCast's unique subscriber count", "visual": { "type": "sql_playground" } },
-    { "id": "8", "type": "interactive", "headline": "Lock In the Concepts", "visual": { "type": "matching", "pairs": [{ "left": "COUNT(*)", "right": "Total billing events (includes duplicates)" }, { "left": "COUNT(DISTINCT customer)", "right": "Unique paying subscribers" }, { "left": "Grain", "right": "What one row in the table represents" }, { "left": "Inclusion rules", "right": "WHO / WHEN / WHERE / exclusions" }] } },
-    { "id": "9", "type": "checkpoint", "headline": "The Manager Question", "prompt": "Your manager asks: how many UNIQUE paying subscribers did we have last month? Which query do you send?", "expected": "count distinct", "hint": "You need unique people, not total billing rows" },
-    { "id": "10", "type": "summary", "headline": "Badge Earned: Data Foundations", "bullets": ["Every metric needs inclusion rules — WHO, WHEN, WHERE, and what to exclude", "Check the grain before you count — one row does not equal one customer", "COUNT(DISTINCT) for unique values, COUNT(*) for total rows", "Next up: Lesson 2 — Aggregation & Grouping"] }
-  ]
-}
+<interaction_rules>
+1. Each message: ONE concept or ONE question. Max 4 sentences of
+   explanation before asking something.
 
-Keep the tone direct and professional. Ground every concept in the NovaCast scenario. Don't use filler phrases or generic motivation.`;
+2. After explaining, ALWAYS give the student something to DO:
+   - Multiple choice (A/B/C/D)
+   - True/false
+   - Open-ended ("What do you think...")
+   - Scenario prompt ("Imagine you work at...")
 
-/* ═══════════════════════════════════════════════════════════
-   JSON HELPERS
-   ═══════════════════════════════════════════════════════════ */
+3. Feedback is instant:
+   - Right: Brief celebration + why it's right + move forward
+   - Wrong: No shame. "Good instinct, but..." then guide.
 
-function extractJson(text: string) {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("No JSON found in response");
-  return text.slice(start, end + 1);
-}
+4. Start easy. Build a streak. Then increase challenge.
 
-function parseDeckJson(raw: string) {
-  const text = (raw || "").trim();
-  if (!text) throw new Error("Empty response");
-  try { return JSON.parse(text); } catch { /* continue */ }
-  try { return JSON.parse(extractJson(text)); } catch { /* continue */ }
-  try { return JSON.parse(jsonrepair(text)); } catch { /* continue */ }
-  try { return JSON.parse(jsonrepair(extractJson(text))); } catch { /* continue */ }
-  throw new Error("JSON parse failed after all attempts");
-}
+5. Every concept anchors to a real company — Netflix, Spotify,
+   DoorDash, Instagram, Amazon, Uber.
 
-/* ═══════════════════════════════════════════════════════════
-   AUTH HELPERS
-   ═══════════════════════════════════════════════════════════ */
+6. Last question in every unit should be achievable.
+</interaction_rules>
 
-async function getAuthHeaders() {
-  const {
-    GCP_PROJECT_NUMBER,
-    GCP_SERVICE_ACCOUNT_EMAIL,
-    GCP_WORKLOAD_IDENTITY_POOL_ID,
-    GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID,
-  } = process.env;
+<hint_escalation>
+When stuck, NEVER give the answer. Escalate through:
+Level 1 — Rephrase the question differently
+Level 2 — Break into a smaller sub-question
+Level 3 — Narrow to 2 options
+Level 4 — Walk through reasoning step by step
+Level 5 — (Last resort) Give answer + explain + ask follow-up
+</hint_escalation>
 
-  if (
-    GCP_PROJECT_NUMBER &&
-    GCP_SERVICE_ACCOUNT_EMAIL &&
-    GCP_WORKLOAD_IDENTITY_POOL_ID &&
-    GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID
-  ) {
-    const maybeClient = ExternalAccountClient.fromJSON({
-      type: "external_account",
-      audience: `//iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID}`,
-      subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
-      token_url: "https://sts.googleapis.com/v1/token",
-      service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken`,
-      subject_token_supplier: { getSubjectToken: getVercelOidcToken },
-    });
+<adaptive_behavior>
+STRUGGLING: Slow down. More examples. Break it smaller.
+ADVANCED: Speed up. Skip basics. Add edge cases.
+RUSHING: "You're right. But WHY?" — probe for depth.
+DISENGAGED: Switch to role-play scenarios. Make it vivid.
+</adaptive_behavior>
 
-    if (!maybeClient) throw new Error("ExternalAccountClient.fromJSON returned null");
-    return await maybeClient.getRequestHeaders();
-  }
+<formatting>
+- Keep explanations to 2-4 sentences max
+- Use **bold** for key terms and definitions
+- Multiple choice on separate lines: A) ... B) ... C) ... D) ...
+- End EVERY message with something for the student to do or answer
+- Tone: smart friend energy. Warm but no fluff.
+- Max one emoji per message, only when natural
+</formatting>
 
-  const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
-  return await (await auth.getClient()).getRequestHeaders();
-}
+<boundary_handling>
+OFF-TOPIC: Quick answer, then "Back to it —" and redirect.
+"JUST TELL ME": "I get it. Let me narrow it down instead." Then give
+a simpler version of the question.
+FRUSTRATED: "This is where the learning happens. Different angle —"
+Then rephrase from scratch.
+</boundary_handling>
 
-function getAuth(h: Headers | Record<string, string>): string | null {
-  if (!h) return null;
-  if (h instanceof Headers) return h.get("authorization") ?? h.get("Authorization");
-  return h.authorization || h.Authorization || null;
-}
+<unit_transitions>
+After completing each unit, say:
+"**Unit X of 6 complete.** [One-line summary of what they learned]"
+Then seamlessly begin the next unit's first question.
+</unit_transitions>
+`;
 
-/* ═══════════════════════════════════════════════════════════
-   DOCAI TEXT EXTRACTION
-   ═══════════════════════════════════════════════════════════ */
+const LESSON_1_1 = `
+<current_lesson>
+<metadata>
+  Lesson 1.1: What Is Data and Why It Matters
+  Module 1 | ~3 hours | 6 units
+</metadata>
 
-async function extractText(params: { projectId: string; auth: string; base64: string }) {
-  const url = `https://${DOCAI_LOCATION}-documentai.googleapis.com/v1/projects/${params.projectId}/locations/${DOCAI_LOCATION}/processors/${DOCAI_PROCESSOR_ID}:process`;
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: { Authorization: params.auth, "Content-Type": "application/json" },
-    body: JSON.stringify({ rawDocument: { content: params.base64, mimeType: "application/pdf" } }),
-  });
-  const data = await resp.json();
-  if (!resp.ok) throw new Error(`DocAI error ${resp.status}`);
-  return (data?.document?.text || "").replace(/\s+/g, " ").trim().slice(0, 3000);
-}
+<learning_objectives>
+1. Define data types (quantitative, qualitative, structured, unstructured)
+2. Distinguish between data, information, and insight
+3. Explain how businesses use data to make decisions
+4. Identify what data is needed to answer a business question
+</learning_objectives>
 
-/* ═══════════════════════════════════════════════════════════
-   GEMINI GENERATION
-   ═══════════════════════════════════════════════════════════ */
+<units>
 
-async function generate(params: { projectId: string; auth: string; resume: string }) {
-  const url = `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${params.projectId}/locations/${LOCATION}/publishers/google/models/${MODEL}:generateContent`;
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: { Authorization: params.auth, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{
-        role: "user",
-        parts: [{ text: `Context: ${params.resume.slice(0, 1500)}\n\nGenerate the lesson.` }],
-      }],
-      systemInstruction: { role: "system", parts: [{ text: SYSTEM }] },
-      generationConfig: { temperature: 0.2, maxOutputTokens: 2500, responseMimeType: "application/json" },
-    }),
-  });
-  const data = await resp.json();
-  if (!resp.ok) throw new Error(`Vertex API error ${resp.status}`);
-  return parseDeckJson(data?.candidates?.[0]?.content?.parts?.[0]?.text || "");
-}
+<unit id="1" title="Data Is Everywhere" time="20min">
+Goal: Student realizes data is already part of their daily life.
+Core concept: Data = recorded observations about the world.
 
-/* ═══════════════════════════════════════════════════════════
-   SAMPLE DATA — NovaCast subscription billing events
-   ═══════════════════════════════════════════════════════════ */
+Open with real company hook (Netflix, Spotify, etc.) then immediately
+ask a gut-feel question. Use their answer to define data.
 
-const SAMPLE_ORDERS: OrderRow[] = [
-  { id: 1, customer: "Alice", color: "#6366f1", item: "Pro Monthly", price: "$14.99" },
-  { id: 2, customer: "Bob", color: "#f97316", item: "Pro Monthly", price: "$14.99" },
-  { id: 3, customer: "Alice", color: "#6366f1", item: "Pro Monthly", price: "$14.99" },
-  { id: 4, customer: "Carol", color: "#ec4899", item: "Team Monthly", price: "$29.99" },
-  { id: 5, customer: "Bob", color: "#f97316", item: "Pro Monthly", price: "$14.99" },
-  { id: 6, customer: "Alice", color: "#6366f1", item: "Pro Monthly", price: "$14.99" },
-];
+Key questions to weave in:
+- "Name ONE piece of data your favorite app collects about you"
+- "Why does that app collect that? What do they DO with it?"
+- "Spotify's Discover Weekly uses: A) Just liked songs B) Listens, skips,
+  repeats + similar users C) Random D) Paid placements" → B
+- "True or false: Netflix's recommendation algo runs on your viewing data" → True
 
-const SAMPLE_PEOPLE = [
-  { name: "Alice", color: "#6366f1" },
-  { name: "Bob", color: "#f97316" },
-  { name: "Alice", color: "#6366f1" },
-  { name: "Carol", color: "#ec4899" },
-  { name: "Bob", color: "#f97316" },
-  { name: "Alice", color: "#6366f1" },
-];
+Wrap: "**Unit 1 of 6 complete.** Data is everywhere — companies that
+collect and analyze it well make better decisions."
+</unit>
 
-/* ═══════════════════════════════════════════════════════════
-   TRANSFORM: raw Gemini deck → page Lesson schema
-   ═══════════════════════════════════════════════════════════ */
+<unit id="2" title="Data vs. Information vs. Insight" time="25min">
+Data = raw facts ("4,231").
+Information = data + context ("4,231 orders yesterday").
+Insight = leads to action ("Orders dropped 23% — investigate").
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function transformToLesson(deck: any): Lesson {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rawSlides: any[] = Array.isArray(deck?.slides) ? deck.slides : [];
-  if (rawSlides.length < 3) throw new Error("Too few slides from generation");
+Key questions:
+- Classify: A) 72 B) 72 signups yesterday C) Signups dropped 40%, revert the page
+- "'Average customer spends $47.' Data, information, or insight?" → Information
+- "How would you turn that $47 into an INSIGHT?"
+- "Boss says 'get me data on customers.' They actually want:
+  A) Database dump B) Organized info C) Insights they can act on D) Numbers" → C
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const slides: Slide[] = rawSlides.map((raw: any, i: number) => {
-    const id = String(raw?.id || i + 1);
-    const rawType = String(raw?.type || "concept");
-    const headline = String(raw?.headline || `Slide ${i + 1}`);
-    const subheadline = raw?.subheadline ? String(raw.subheadline) : undefined;
-    const bullets: string[] = Array.isArray(raw?.bullets) ? raw.bullets.map(String) : [];
+Wrap: "**Unit 2 of 6 complete.** Anyone can pull data. Analysts turn it
+into insights that drive decisions."
+</unit>
 
-    switch (rawType) {
-      case "intro": {
-        const phases = bullets.length > 0
-          ? [
-            { content: "Scanning your background…", delay: 1000 },
-            { content: "Building your scenario…", delay: 2500 },
-            { content: bullets.map((b) => `**${b}**`).join("\n"), delay: 4000 },
-          ]
-          : undefined;
-        return {
-          id,
-          type: "intro",
-          title: headline,
-          subtitle: subheadline,
-          badge: "Lesson 1",
-          badgeColor: "#6366f1",
-          badgeIcon: "Database",
-          phases,
-        };
-      }
+<unit id="3" title="Quantitative vs. Qualitative" time="20min">
+Quantitative = numbers (WHAT happened). Qualitative = descriptions (WHY).
 
-      case "concept": {
-        const body = bullets
-          .map((b) => {
-            if (b.startsWith("KEY:")) return `**${b.replace("KEY: ", "")}**`;
-            if (b.startsWith("⚠")) return `**${b}**`;
-            return b;
-          })
-          .join("\n\n");
-        const isGrain = headline.toLowerCase().includes("grain");
-        const isMetric = headline.toLowerCase().includes("metric") || headline.toLowerCase().includes("rule");
-        return {
-          id,
-          type: "concept",
-          title: headline,
-          subtitle: subheadline,
-          body: body || undefined,
-          badge: isGrain ? "Core Concept" : isMetric ? "The Job" : "Concept",
-          badgeColor: isGrain ? "#f97316" : isMetric ? "#6366f1" : "#3b82f6",
-          badgeIcon: isGrain ? "Eye" : isMetric ? "Lightbulb" : "Zap",
-        };
-      }
+Key questions:
+- Sort: downloads, star rating, written review, delivery time, favorite category
+- "2-star rating tells you WHY they're unhappy?" → No, need qualitative
+- "DoorDash delivery 32→41 min. What qualitative data explains why?"
+- "New feature: want A) Only quant B) Only qual C) Both" → C
 
-      case "interactive": {
-        const visualType = raw?.visual?.type;
+Wrap: "**Unit 3 of 6 complete.** Quant = what happened. Qual = why.
+Best analysts use both."
+</unit>
 
-        if (visualType === "live_table") {
-          return {
-            id,
-            type: "concept",
-            title: headline,
-            subtitle: subheadline ?? "Hit play — watch subscription events stream in",
-            badge: "Live Data",
-            badgeColor: "#6366f1",
-            badgeIcon: "Play",
-            visual: { type: "live_table", orders: SAMPLE_ORDERS, revealSpeed: 600 },
-          };
-        }
+<unit id="4" title="Structured vs. Unstructured" time="20min">
+Structured = rows/columns (spreadsheets, databases). Easy to analyze.
+Unstructured = no format (emails, images, videos). Hard but valuable.
 
-        if (visualType === "count_demo") {
-          return {
-            id,
-            type: "concept",
-            title: headline,
-            subtitle: subheadline ?? "See why the wrong COUNT inflates your number",
-            body: "**COUNT(*)** counts every billing row — Alice appears 3 times, so you'd report 6 instead of 3 subscribers. **COUNT(DISTINCT customer)** counts each person once.",
-            badge: "Key Difference",
-            badgeColor: "#10b981",
-            badgeIcon: "Hash",
-            visual: { type: "count_demo", people: SAMPLE_PEOPLE },
-          };
-        }
+Key questions:
+- "Which is structured? A) Order spreadsheet B) Emails C) Photos D) Click DB" → A, D
+- "Why is a spreadsheet easier to analyze than a folder of emails?"
+- "Instagram — one structured example, one unstructured?"
+- "Analysts mostly work with: A) Structured B) Unstructured C) Mix" → A
 
-        if (visualType === "sql_playground") {
-          return {
-            id,
-            type: "checkpoint",
-            title: headline,
-            subtitle: subheadline,
-            body: "Run `COUNT(*)` first. Then change it to `COUNT(DISTINCT customer)` and compare. The gap between those two numbers is how many subscribers you'd overcount.",
-            badge: "Your Turn",
-            badgeColor: "#6366f1",
-            badgeIcon: "Terminal",
-            visual: {
-              type: "sql_playground",
-              orders: SAMPLE_ORDERS,
-              defaultQuery: "SELECT COUNT(*) FROM subscriptions;",
-              hint: "Run COUNT(*) first, then switch to COUNT(DISTINCT customer). Notice the difference.",
-            },
-          };
-        }
+Wrap: "**Unit 4 of 6 complete.** Structured data is your daily bread
+as an analyst."
+</unit>
 
-        if (visualType === "matching") {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const rawPairs = Array.isArray(raw?.visual?.pairs) ? raw.visual.pairs : [];
-          const pairs: MatchingPair[] = rawPairs.length > 0
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ? rawPairs.map((p: any) => ({
-              left: String(p?.left || ""),
-              right: String(p?.right || ""),
-            }))
-            : [
-              { left: "COUNT(*)", right: "Total billing events (includes duplicates)" },
-              { left: "COUNT(DISTINCT customer)", right: "Unique paying subscribers" },
-              { left: "Grain", right: "What one row in the table represents" },
-              { left: "Inclusion rules", right: "WHO / WHEN / WHERE / exclusions" },
-            ];
-          return {
-            id,
-            type: "checkpoint",
-            title: headline,
-            body: "Match each term to its definition. These are words you'll use in every analyst standup.",
-            badge: "Skill Check",
-            badgeColor: "#eab308",
-            badgeIcon: "Zap",
-            visual: { type: "matching", pairs, shuffleRight: true },
-          };
-        }
+<unit id="5" title="How Companies Use Data" time="30min">
+5 uses: understand customers, measure performance, predict, A/B test, optimize.
 
-        return {
-          id,
-          type: "concept",
-          title: headline,
-          subtitle: subheadline,
-          body: bullets.join("\n\n") || undefined,
-        };
-      }
+Key questions:
+- Match business questions to data use types
+- "What data does Netflix check before greenlighting a $100M show?"
+- "DoorDash rainy Friday lunch rush — what data for driver pay?"
+- "Most important analyst job? A) Dashboards B) Code C) Better decisions D) Collect data" → C
 
-      case "quiz": {
-        const rawOptions: string[] = Array.isArray(raw?.options) ? raw.options.map(String) : [];
-        const expected = String(raw?.expected || "").toLowerCase();
-        const prompt = raw?.prompt ? String(raw.prompt) : undefined;
+Wrap: "**Unit 5 of 6 complete.** Every company runs on data decisions.
+One more unit — you put it all together."
+</unit>
 
-        const options: QuizOption[] = rawOptions.map((opt) => ({
-          label: opt,
-          value: opt,
-          correct: opt.toLowerCase() === expected,
-        }));
+<unit id="6" title="Final Challenge — Think Like an Analyst" time="40min">
+Apply everything. Socratic method heavy. Push for depth.
 
-        if (options.length > 0 && !options.some((o) => o.correct)) {
-          options[0].correct = true;
-        }
+Present business questions one at a time. Student identifies data needed + type:
+1. "Why did signups drop?"
+2. "Are customers happy with the new feature?"
+3. "Should we expand to Chicago?"
 
-        return {
-          id,
-          type: "quiz",
-          title: headline,
-          subtitle: prompt,
-          body: raw?.hint ? `💡 ${raw.hint}` : undefined,
-          badge: "Quiz",
-          badgeColor: "#6366f1",
-          badgeIcon: "Lightbulb",
-          options,
-          successMessage: "Correct — you'd get this right on the job.",
-          failureMessage: "Not quite. On the job, this mistake means your report counts rows instead of people.",
-          remediation: "The grain is **billing event** — each row is one charge, not one customer. Alice was billed 3 times, so she has 3 rows. If you assumed the grain was 'customer,' you'd think COUNT(*) gives you subscriber count. It doesn't — it gives you total billing events. This mistake inflates your report by double-counting repeat customers.",
-        };
-      }
+Then the PM scenario:
+"You're a new data analyst at QuickBite (food delivery). PM says:
+'Are our customers happy? Complaints seem up. Look into it.'
+Walk me through: What clarifying questions? What data? How to define
+'happy'? What's your plan?"
 
-      case "checkpoint": {
-        const prompt = raw?.prompt ? String(raw.prompt) : undefined;
-        const hint = raw?.hint ? String(raw.hint) : undefined;
+Guide them step by step. Don't accept vague answers.
 
-        return {
-          id,
-          type: "quiz",
-          title: headline,
-          subtitle: prompt,
-          body: hint ? `💡 ${hint}` : undefined,
-          badge: "Manager Check",
-          badgeColor: "#f97316",
-          badgeIcon: "Award",
-          options: [
-            { label: "SELECT COUNT(*) FROM subscriptions", value: "count", correct: false },
-            { label: "SELECT COUNT(DISTINCT customer) FROM subscriptions", value: "count distinct", correct: true },
-          ],
-          successMessage: "That's the query your manager needs. You'd nail this in a real standup.",
-          failureMessage: "COUNT(*) gives 6 billing rows — but NovaCast only has 3 subscribers. Your manager would catch this.",
-          remediation: "**COUNT(*)** returns 6 because the table has 6 billing events. But your manager asked for **unique subscribers** — that's 3 people. **COUNT(DISTINCT customer)** removes the duplicate rows for Alice and Bob, giving you the correct answer. In a real job, sending the wrong number means your manager loses trust in your analysis.",
-          visual: { type: "count_demo", people: SAMPLE_PEOPLE },
-        };
-      }
+Lesson complete: "**Lesson 1.1 complete!** You can now define data types,
+turn raw data into insights, and build an analysis plan from a vague
+question. Next: Lesson 1.2 — Spreadsheet Fundamentals."
+</unit>
 
-      case "summary": {
-        const iconMap: Record<number, string> = { 0: "Eye", 1: "Hash", 2: "Users", 3: "ArrowRight" };
-        const checklist = bullets.map((b, bi) => ({
-          icon: iconMap[bi] || "Check",
-          text: b.replace(/^KEY:\s*/, ""),
-        }));
-        return {
-          id,
-          type: "summary",
-          title: headline,
-          body: "You can now define a metric, check the grain, and write the right COUNT query. That's the foundation for every analysis you'll build at a real company.",
-          checklist,
-        };
-      }
+</units>
+</current_lesson>
+`;
 
-      default:
-        return {
-          id,
-          type: "concept" as const,
-          title: headline,
-          body: bullets.join("\n\n") || subheadline || undefined,
-        };
-    }
-  });
-
-  return {
-    id: "lesson-1-data-foundations",
-    title: String(deck?.title || "Lesson 1: Data Foundations"),
-    description: "Define metrics, check the grain, write the right COUNT",
-    estimatedMinutes: 4,
-    slides,
-  };
-}
-
-/* ═══════════════════════════════════════════════════════════
-   COMPLETE FALLBACK — directly in page Lesson schema
-   ═══════════════════════════════════════════════════════════ */
-
-function fallbackLesson(): Lesson {
-  return {
-    id: "lesson-1-data-foundations",
-    title: "Lesson 1: Data Foundations",
-    description: "Define metrics, check the grain, write the right COUNT",
-    estimatedMinutes: 4,
-    slides: [
-      {
-        id: "1",
-        type: "intro",
-        title: "Your First Analyst Task",
-        subtitle: "Your manager needs last month's paying subscriber count by end of day",
-        badge: "Lesson 1",
-        badgeColor: "#6366f1",
-        badgeIcon: "Database",
-        phases: [
-          { content: "Scanning your background…", delay: 1000 },
-          { content: "Building your scenario…", delay: 2500 },
-          { content: "**Define a metric with inclusion rules**\n**Read the grain so you don't double-count**\n**Write the SQL to get the right number**", delay: 4000 },
-        ],
-      },
-      {
-        id: "2",
-        type: "concept",
-        title: "Metrics Need Rules",
-        badge: "The Job",
-        badgeColor: "#6366f1",
-        badgeIcon: "Lightbulb",
-        body: "**A metric without rules is just a guess.** Your manager asks for \u201cpaying subscribers last month.\u201d Before you write any SQL, you need to define exactly what counts.\n\n**WHO:** Users on a paid plan \u2014 exclude free-trial and churned accounts\n**WHEN:** Subscription active at any point during the last calendar month\n**WHERE:** All regions, but exclude internal test accounts (@novacast.dev emails)\n\n**Without these rules, two analysts will get two different numbers for the same question.**",
-      },
-      {
-        id: "3",
-        type: "concept",
-        title: "The Subscriptions Table",
-        subtitle: "Hit play \u2014 watch subscription billing events stream in",
-        badge: "Live Data",
-        badgeColor: "#6366f1",
-        badgeIcon: "Play",
-        visual: {
-          type: "live_table",
-          orders: SAMPLE_ORDERS,
-          revealSpeed: 600,
-        },
-      },
-      {
-        id: "4",
-        type: "concept",
-        title: "Grain: Why One Row Matters",
-        badge: "Core Concept",
-        badgeColor: "#f97316",
-        badgeIcon: "Eye",
-        body: "**Grain = what one row represents in your table.**\n\nThis subscriptions table has one row per **billing event**, not one row per customer. Alice has 3 rows because she was billed 3 months. Bob has 2 rows.\n\nIf you assume each row is a customer and run COUNT(*), you'd report 6 subscribers. The real answer is 3.\n\n**\u26a0 Wrong grain assumption \u2192 double-counted subscribers \u2192 bad report \u2192 awkward conversation with your manager.**",
-      },
-      {
-        id: "5",
-        type: "quiz",
-        title: "Spot the Grain",
-        subtitle: "NovaCast's subscriptions table has one row per monthly billing event. A customer billed 3 months in a row has 3 rows. What is the grain?",
-        badge: "Quiz",
-        badgeColor: "#6366f1",
-        badgeIcon: "Lightbulb",
-        body: "\ud83d\udca1 What does a single row represent?",
-        options: [
-          { label: "Customer", value: "Customer", correct: false },
-          { label: "Subscription plan", value: "Subscription plan", correct: false },
-          { label: "Billing event", value: "Billing event", correct: true },
-          { label: "Calendar month", value: "Calendar month", correct: false },
-        ],
-        successMessage: "Correct \u2014 you'd get this right on the job.",
-        failureMessage: "Not quite. On the job, confusing this means your COUNT returns the wrong number.",
-        remediation: "The grain is **billing event** \u2014 each row is one charge, not one customer. Alice was billed 3 times, so she has 3 rows. If you assumed the grain was \u2018customer,\u2019 you'd think COUNT(*) gives you subscriber count. It doesn't \u2014 it gives you total billing events. This mistake inflates your report by double-counting repeat customers.",
-      },
-      {
-        id: "6",
-        type: "concept",
-        title: "COUNT(*) vs COUNT(DISTINCT)",
-        subtitle: "See why the wrong COUNT inflates your number",
-        body: "**COUNT(*)** counts every billing row \u2014 Alice appears 3 times, so you'd report 6 instead of 3 subscribers. **COUNT(DISTINCT customer)** counts each person once. The gap between these numbers is exactly how much you'd overcount.",
-        badge: "Key Difference",
-        badgeColor: "#10b981",
-        badgeIcon: "Hash",
-        visual: {
-          type: "count_demo",
-          people: SAMPLE_PEOPLE,
-        },
-      },
-      {
-        id: "7",
-        type: "checkpoint",
-        title: "Write the Query",
-        body: "Run `COUNT(*)` first. Then change it to `COUNT(DISTINCT customer)` and compare. The gap between those two numbers is how many subscribers you'd overcount.",
-        badge: "Your Turn",
-        badgeColor: "#6366f1",
-        badgeIcon: "Terminal",
-        visual: {
-          type: "sql_playground",
-          orders: SAMPLE_ORDERS,
-          defaultQuery: "SELECT COUNT(*) FROM subscriptions;",
-          hint: "Run COUNT(*) first, then switch to COUNT(DISTINCT customer). Notice the difference.",
-        },
-      },
-      {
-        id: "8",
-        type: "checkpoint",
-        title: "Lock In the Concepts",
-        body: "Match each term to its definition. These are words you'll use in every analyst standup.",
-        badge: "Skill Check",
-        badgeColor: "#eab308",
-        badgeIcon: "Zap",
-        visual: {
-          type: "matching",
-          pairs: [
-            { left: "COUNT(*)", right: "Total billing events (includes duplicates)" },
-            { left: "COUNT(DISTINCT customer)", right: "Unique paying subscribers" },
-            { left: "Grain", right: "What one row in the table represents" },
-            { left: "Inclusion rules", right: "WHO / WHEN / WHERE / exclusions" },
-          ],
-          shuffleRight: true,
-        },
-      },
-      {
-        id: "9",
-        type: "quiz",
-        title: "The Manager Question",
-        subtitle: "Your manager asks: \u2018How many unique paying subscribers did we have last month?\u2019 Which query do you send?",
-        badge: "Manager Check",
-        badgeColor: "#f97316",
-        badgeIcon: "Award",
-        options: [
-          { label: "SELECT COUNT(*) FROM subscriptions", value: "count", correct: false },
-          { label: "SELECT COUNT(DISTINCT customer) FROM subscriptions", value: "count distinct", correct: true },
-        ],
-        successMessage: "That's the query your manager needs. You'd nail this in a real standup.",
-        failureMessage: "COUNT(*) gives 6 billing rows \u2014 but NovaCast only has 3 subscribers. Your manager would catch this.",
-        remediation: "**COUNT(*)** returns 6 because the table has 6 billing events. But your manager asked for **unique subscribers** \u2014 that's 3 people. **COUNT(DISTINCT customer)** removes the duplicate rows for Alice and Bob, giving you the correct answer. In a real job, sending the wrong number means your manager loses trust in your analysis.",
-        visual: {
-          type: "count_demo",
-          people: SAMPLE_PEOPLE,
-        },
-      },
-      {
-        id: "10",
-        type: "summary",
-        title: "Badge Earned: Data Foundations",
-        body: "You can now define a metric, check the grain, and write the right COUNT query. That's the foundation for every analysis you'll build at a real company.",
-        checklist: [
-          { icon: "Eye", text: "Every metric needs inclusion rules \u2014 WHO, WHEN, WHERE, and what to exclude" },
-          { icon: "Hash", text: "Check the grain before you count \u2014 one row \u2260 one customer" },
-          { icon: "Users", text: "COUNT(DISTINCT) for unique values, COUNT(*) for total rows" },
-          { icon: "ArrowRight", text: "Next up: Lesson 2 \u2014 Aggregation & Grouping" },
-        ],
-      },
-    ],
-  };
-}
-
-/* ═══════════════════════════════════════════════════════════
-   POST HANDLER
-   ═══════════════════════════════════════════════════════════ */
-
-export async function POST(req: Request) {
-  const start = Date.now();
+export async function POST(req: NextRequest) {
   try {
-    const projectId = process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
-    if (!projectId) return NextResponse.json({ error: "missing_project" }, { status: 500 });
+    const { messages } = await req.json();
 
-    const hdrs = await getAuthHeaders();
-    const auth = getAuth(hdrs);
-    if (!auth) return NextResponse.json({ error: "missing_auth" }, { status: 500 });
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "ANTHROPIC_API_KEY not set. Add it to .env.local and restart." },
+        { status: 500 }
+      );
+    }
 
-    let resume = "";
-    const ct = req.headers.get("content-type") || "";
+    console.log("[tutor] Messages:", messages.length);
 
-    if (ct.includes("multipart/form-data")) {
-      const form = await req.formData();
-      const text = form.get("resumeText");
-      if (typeof text === "string" && text.trim().length > 0) {
-        resume = text;
-      } else {
-        const file = form.get("resumeFile");
-        if (!(file instanceof File))
-          return NextResponse.json({ error: "no_file" }, { status: 400 });
-        if (!file.type.includes("pdf") && !file.name.toLowerCase().endsWith(".pdf"))
-          return NextResponse.json({ error: "pdf_only" }, { status: 400 });
-        const bytes = await file.arrayBuffer();
-        resume = await extractText({ projectId, auth, base64: Buffer.from(bytes).toString("base64") });
+    const fullSystemPrompt = SYSTEM_PROMPT + "\n\n" + LESSON_1_1;
+
+    // Try models in order — Haiku first for cheap iteration
+    const models = [
+      "claude-haiku-4-5-20251001",
+      "claude-sonnet-4-5-20250929",
+      "claude-3-5-sonnet-20241022",
+      "claude-3-haiku-20240307",
+    ];
+
+    for (const model of models) {
+      console.log("[tutor] Trying:", model);
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1024,
+          system: fullSystemPrompt,
+          messages,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.content
+          .filter((block: any) => block.type === "text")
+          .map((block: any) => block.text)
+          .join("\n");
+        console.log("[tutor] Success:", model);
+        return NextResponse.json({ message: text });
       }
-    } else {
-      const body = await req.json().catch(() => ({}));
-      resume = String(body?.resumeText || "");
+
+      const err = await response.json();
+      console.error(`[tutor] ${model} (${response.status}):`, err?.error?.message);
+
+      if (response.status === 401 || response.status === 403) {
+        return NextResponse.json(
+          { error: `API key error: ${err?.error?.message}` },
+          { status: response.status }
+        );
+      }
+
+      if (response.status !== 400 && response.status !== 404) {
+        return NextResponse.json(
+          { error: err?.error?.message || `Error ${response.status}` },
+          { status: response.status }
+        );
+      }
     }
 
-    if (resume.trim().length < 50) {
-      return NextResponse.json({ error: "too_short", hint: "Upload PDF or paste more text" }, { status: 400 });
-    }
-
-    let lesson: Lesson;
-    let usedFallback = false;
-
-    try {
-      const rawDeck = await generate({ projectId, auth, resume });
-      lesson = transformToLesson(rawDeck);
-      if (lesson.slides.length < 5) throw new Error("Too few slides after transform");
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.error("Generation failed, using fallback:", msg);
-      lesson = fallbackLesson();
-      usedFallback = true;
-    }
-
-    console.log(`Lesson generated in ${Date.now() - start}ms, fallback=${usedFallback}`);
-    return NextResponse.json(lesson);
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("Route error:", msg);
-    return NextResponse.json({ error: "server_error", message: msg }, { status: 500 });
+    return NextResponse.json(
+      { error: "No models available. Add credits at console.anthropic.com." },
+      { status: 400 }
+    );
+  } catch (error: any) {
+    console.error("[tutor] Error:", error);
+    return NextResponse.json(
+      { error: `Server error: ${error.message}` },
+      { status: 500 }
+    );
   }
 }
